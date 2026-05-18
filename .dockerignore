@@ -1,0 +1,14 @@
+.venv/
+venv/
+env/
+.claude/
+data/app.db
+data/*.db-shm
+data/*.db-wal
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.md
+SUBMISSION.html
