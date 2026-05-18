@@ -68,6 +68,7 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware, minimum_size=500)  # compress responses > 500 bytes
 
 # ── Static Files ──────────────────────────────────────────────────────────────
+import os as _os; _os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Routers ───────────────────────────────────────────────────────────────────
