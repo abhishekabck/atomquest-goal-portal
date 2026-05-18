@@ -3,6 +3,6 @@ import os
 
 if __name__ == "__main__":
     import startup  # seed DB if empty
-    port = int(os.environ.get("PORT", 8001))
+    port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0" if os.environ.get("PORT") else "localhost"
     uvicorn.run("app.main:app", host=host, port=port, reload=(host == "localhost"))
