@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Quarterly Check-in{% endblock %}
+{% block page_title %}Quarterly Check-in{% endblock %}
+
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'saved' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Check-in saved successfully.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+{% if not cycle %}
+  <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No active cycle found.</div>
+{% elif not active_quarter %}
+  <div class="alert alert-info"><i class="bi bi-clock me-2"></i>No check-in window is currently open. Check back during the quarterly review period.</div>
+  <div class="card mt-3"><div class="card-body">
+    <h6 class="fw-bold mb-3">Check-in Schedule</h6>
+    <table class="table table-sm">
+      <thead><tr><th>Quarter</th><th>Window Opens</th><th>Window Closes</th></tr></thead>
+      <tbody>
+        {% for q, qs, qe in [('Q1', cycle.q1_start, cycle.q1_end),('Q2',cycle.q2_start,cycle.q2_end),('Q3',cycle.q3_start,cycle.q3_end),('Q4',cycle.q4_start,cycle.q4_end)] %}
+        {% if qs %}<tr><td><strong>{{ q }}</strong></td><td>{{ qs }}</td><td>{{ qe }}</td></tr>{% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+{% elif not sheet %}
+  <div class="alert alert-warning"><i class="bi bi-lock me-2"></i>Your goal sheet must be approved before you can log check-in data.</div>
+{% else %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <div style="background:#e8f0fe;border-radius:10px;padding:.6rem 1.2rem;">
+    <span style="font-size:.8rem;color:#6c757d;">Active Quarter</span>
+    <div style="font-size:1.4rem;font-weight:700;color:#1E3A5F;">{{ active_quarter }}</div>
+  </div>
+  <div style="background:#fff3e0;border-radius:10px;padding:.6rem 1.2rem;">
+    <span style="font-size:.8rem;color:#6c757d;">Goals to Update</span>
+    <div style="font-size:1.4rem;font-weight:700;color:#F57C00;">{{ goals_with_checkins|length }}</div>
+  </div>
+  <div style="background:#e8f5e9;border-radius:10px;padding:.6rem 1.2rem;">
+    <span style="font-size:.8rem;color:#6c757d;">Completed</span>
+    <div style="font-size:1.4rem;font-weight:700;color:#2e7d32;">
+      {{ goals_with_checkins | selectattr('1') | list | length }}
+    </div>
+  </div>
+</div>
+
+{% for goal, ci in goals_with_checkins %}
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:#f8f9fa;">
+    <div>
+      <span class="fw-bold" style="color:#1E3A5F;">{{ goal.title }}</span>
+      {% if goal.is_shared %}<span class="badge bg-warning text-dark ms-2" style="font-size:.68rem;">Shared</span>{% endif %}
+      <span class="badge bg-light text-dark ms-2" style="font-size:.7rem;">{{ goal.uom_type.value.replace('_',' ') }}</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span style="font-size:.8rem;color:#6c757d;">Weight: <strong>{{ goal.weightage }}%</strong></span>
+      {% if ci and ci.progress_score is not none %}
+        <span class="badge {% if ci.progress_score >= 80 %}bg-success{% elif ci.progress_score >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}" style="font-size:.78rem;">
+          {{ ci.progress_score|round(1) }}% Score
+        </span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <!-- Planned Target column -->
+      <div class="col-md-3">
+        <div style="background:#f8f9fa;border-radius:8px;padding:.75rem;height:100%;">
+          <div style="font-size:.75rem;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;">Planned Target</div>
+          <div class="mt-1 fw-bold" style="color:#1E3A5F;font-size:1.1rem;">
+            {% if goal.uom_type.value == 'TIMELINE' %}
+              {{ goal.target_date or '—' }}
+            {% elif goal.uom_type.value == 'ZERO_BASED' %}
+              0 incidents
+            {% else %}
+              {{ goal.target_value if goal.target_value is not none else '—' }}
+              {% if 'PERCENT' in goal.uom_type.value %}%{% endif %}
+            {% endif %}
+          </div>
+          <div style="font-size:.75rem;color:#adb5bd;">{{ goal.thrust_area.name }}</div>
+        </div>
+      </div>
+
+      <!-- Check-in Form -->
+      <div class="col-md-9">
+        <form method="POST" action="/employee/checkin/{{ goal.id }}">
+          <input type="hidden" name="quarter" value="{{ active_quarter }}"/>
+          <div class="row g-2">
+            {% if goal.uom_type.value == 'TIMELINE' %}
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" style="font-size:.82rem;">Actual Completion Date</label>
+              <input type="date" name="actual_date" class="form-control form-control-sm"
+                     value="{{ ci.actual_date if ci and ci.actual_date else '' }}"/>
+            </div>
+            {% elif goal.uom_type.value == 'ZERO_BASED' %}
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" style="font-size:.82rem;">Actual Incidents</label>
+              <input type="number" name="actual_value" class="form-control form-control-sm" min="0" step="1"
+                     value="{{ ci.actual_value if ci and ci.actual_value is not none else '' }}"
+                     placeholder="Enter 0 for success"/>
+            </div>
+            {% else %}
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" style="font-size:.82rem;">Actual Achievement</label>
+              <input type="number" name="actual_value" class="form-control form-control-sm" step="any"
+                     value="{{ ci.actual_value if ci and ci.actual_value is not none else '' }}"
+                     placeholder="Enter actual value"/>
+            </div>
+            {% endif %}
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold" style="font-size:.82rem;">Status</label>
+              <select name="status" class="form-select form-select-sm">
+                <option value="NOT_STARTED" {% if not ci or ci.status.value == 'NOT_STARTED' %}selected{% endif %}>Not Started</option>
+                <option value="ON_TRACK" {% if ci and ci.status.value == 'ON_TRACK' %}selected{% endif %}>On Track</option>
+                <option value="COMPLETED" {% if ci and ci.status.value == 'COMPLETED' %}selected{% endif %}>Completed</option>
+              </select>
+            </div>
+
+            <div class="col-md-5">
+              <label class="form-label fw-semibold" style="font-size:.82rem;">Notes</label>
+              <input type="text" name="employee_notes" class="form-control form-control-sm"
+                     value="{{ ci.employee_notes if ci and ci.employee_notes else '' }}"
+                     placeholder="Any notes or context…" maxlength="300"/>
+            </div>
+
+            <div class="col-12 d-flex align-items-center justify-content-between">
+              <div>
+                {% if ci and ci.manager_comment %}
+                <div style="background:#e8f5e9;border-radius:6px;padding:.5rem .75rem;font-size:.8rem;">
+                  <i class="bi bi-chat-text me-1" style="color:#2e7d32;"></i>
+                  <strong>Manager:</strong> {{ ci.manager_comment }}
+                  {% if ci.manager_checked_at %}
+                  <span class="text-muted ms-2" style="font-size:.75rem;">— {{ ci.manager_checked_at.strftime('%d %b %Y') }}</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-save me-1"></i>Save
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% if not goals_with_checkins %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox fs-1 d-block mb-3" style="color:#adb5bd;"></i>
+  No approved goals found for check-in.
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

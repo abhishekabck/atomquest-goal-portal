@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'unlocked' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-unlock me-2"></i>Goal unlocked successfully.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#e8f0fe;"><i class="bi bi-person" style="color:#1E3A5F;"></i></div>
+      <div><div class="stat-val">{{ total_users }}</div><div class="stat-label">Employees</div></div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#f3e5f5;"><i class="bi bi-person-workspace" style="color:#7b1fa2;"></i></div>
+      <div><div class="stat-val">{{ total_managers }}</div><div class="stat-label">Managers</div></div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#d1e7dd;"><i class="bi bi-check2-circle" style="color:#0f5132;"></i></div>
+      <div><div class="stat-val">{{ approved }}</div><div class="stat-label">Approved</div></div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#cfe2ff;"><i class="bi bi-hourglass-split" style="color:#084298;"></i></div>
+      <div><div class="stat-val">{{ submitted }}</div><div class="stat-label">Pending</div></div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#fff3cd;"><i class="bi bi-arrow-counterclockwise" style="color:#856404;"></i></div>
+      <div><div class="stat-val">{{ rework }}</div><div class="stat-label">Rework</div></div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#f8d7da;"><i class="bi bi-exclamation-triangle" style="color:#842029;"></i></div>
+      <div><div class="stat-val">{{ open_escalations }}</div><div class="stat-label">Escalations</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart me-2" style="color:#1E3A5F;"></i>Goal Sheet Distribution</h6></div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="statusChart" width="260" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-lightning me-2" style="color:#F57C00;"></i>Quick Actions</h6></div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="/admin/users" class="btn btn-outline-primary text-start"><i class="bi bi-people me-2"></i>Manage Users</a>
+        <a href="/admin/cycles" class="btn btn-outline-primary text-start"><i class="bi bi-calendar3 me-2"></i>Manage Cycles</a>
+        <a href="/admin/thrust-areas" class="btn btn-outline-primary text-start"><i class="bi bi-layers me-2"></i>Manage Thrust Areas</a>
+        <a href="/admin/completion" class="btn btn-outline-success text-start"><i class="bi bi-bar-chart-line me-2"></i>Completion Dashboard</a>
+        <a href="/admin/escalations" class="btn btn-outline-warning text-start"><i class="bi bi-exclamation-triangle me-2"></i>Escalation Rules</a>
+        <a href="/analytics/dashboard" class="btn btn-outline-info text-start"><i class="bi bi-graph-up-arrow me-2"></i>Analytics Dashboard</a>
+        <a href="/reports/achievement" class="btn btn-success text-start"><i class="bi bi-file-earmark-excel me-2"></i>Download Achievement Report</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if cycle %}
+<div class="card mt-4">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2" style="color:#1E3A5F;"></i>Active Cycle — {{ cycle.name }}</h6>
+    <a href="/admin/cycles" class="btn btn-sm btn-outline-primary">Manage Cycles</a>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for label, start, end in [('Goal Setting', cycle.goal_setting_start, cycle.goal_setting_end), ('Q1 Check-in', cycle.q1_start, cycle.q1_end), ('Q2 Check-in', cycle.q2_start, cycle.q2_end), ('Q3 Check-in', cycle.q3_start, cycle.q3_end), ('Q4 / Annual', cycle.q4_start, cycle.q4_end)] %}
+      {% if start %}
+      <div class="col-md-4 col-lg-2">
+        <div style="background:#f8f9fa;border-radius:8px;padding:.75rem;text-align:center;">
+          <div style="font-size:.75rem;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;">{{ label }}</div>
+          <div style="font-size:.82rem;font-weight:600;color:#1E3A5F;margin-top:.3rem;">{{ start }}</div>
+          <div style="font-size:.75rem;color:#adb5bd;">to {{ end }}</div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Approved', 'Pending', 'Rework', 'Draft'],
+    datasets: [{
+      data: [{{ approved }}, {{ submitted }}, {{ rework }}, {{ draft }}],
+      backgroundColor: ['#4CAF50','#2196F3','#FFC107','#9E9E9E'],
+      borderWidth: 3, borderColor: '#fff'
+    }]
+  },
+  options: {
+    responsive: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+    },
+    cutout: '65%'
+  }
+});
+</script>
+{% endblock %}

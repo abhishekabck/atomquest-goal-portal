@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Goal Approvals{% endblock %}
+{% block page_title %}Goal Approvals{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'approved' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Goal sheet approved and locked.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'returned' %}<div class="alert alert-warning alert-dismissible fade show"><i class="bi bi-arrow-counterclockwise me-2"></i>Goal sheet returned for rework.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'shared' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-share me-2"></i>Shared goal pushed to selected employees.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'weightage_not_100' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Cannot approve: total weightage must equal 100%.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div></div>
+  <button class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#sharedGoalModal">
+    <i class="bi bi-share me-2"></i>Push Shared Goal
+  </button>
+</div>
+
+{% if not pending_sheets %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-check2-all fs-1 d-block mb-3" style="color:#adb5bd;"></i>
+    <p class="mb-0">No pending approvals. All caught up!</p>
+  </div>
+</div>
+{% else %}
+{% for sheet in pending_sheets %}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between py-3">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:40px;height:40px;background:#1E3A5F;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">{{ sheet.employee.name[0].upper() }}</div>
+      <div>
+        <div class="fw-bold">{{ sheet.employee.name }}</div>
+        <div style="font-size:.8rem;color:#6c757d;">{{ sheet.employee.department or '' }} · Submitted: {{ sheet.submitted_at.strftime('%d %b %Y, %H:%M') if sheet.submitted_at else '—' }}</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal{{ sheet.id }}">
+        <i class="bi bi-check-lg me-1"></i>Approve
+      </button>
+      <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#reworkModal{{ sheet.id }}">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Return for Rework
+      </button>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead><tr>
+          <th style="padding-left:1.2rem;">Goal Title</th>
+          <th>Thrust Area</th>
+          <th>UoM</th>
+          <th>Target</th>
+          <th>Weightage</th>
+          <th>Edit</th>
+        </tr></thead>
+        <tbody>
+          {% for goal in sheet.goals %}
+          <tr>
+            <td style="padding-left:1.2rem;">
+              <div class="fw-semibold" style="font-size:.875rem;">{{ goal.title }}</div>
+              {% if goal.description %}<div style="font-size:.75rem;color:#6c757d;">{{ goal.description[:80] }}</div>{% endif %}
+              {% if goal.is_shared %}<span class="badge bg-warning text-dark" style="font-size:.65rem;">Shared</span>{% endif %}
+            </td>
+            <td style="font-size:.875rem;">{{ goal.thrust_area.name if goal.thrust_area else '—' }}</td>
+            <td><span class="badge bg-light text-dark" style="font-size:.72rem;">{{ goal.uom_type.value.replace('_',' ') }}</span></td>
+            <td style="font-size:.875rem;">
+              {% if goal.uom_type.value == 'TIMELINE' %}{{ goal.target_date or '—' }}
+              {% elif goal.uom_type.value == 'ZERO_BASED' %}Zero
+              {% else %}{{ goal.target_value if goal.target_value is not none else '—' }}{% endif %}
+            </td>
+            <td><span class="fw-bold" style="color:#1E3A5F;">{{ goal.weightage }}%</span></td>
+            <td>
+              <button class="btn btn-xs btn-outline-secondary" style="font-size:.75rem;padding:.2rem .5rem;"
+                onclick="openInlineEdit({{ goal.id }}, {{ goal.target_value if goal.target_value is not none else 'null' }}, '{{ goal.target_date if goal.target_date else '' }}', {{ goal.weightage }})">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f8f9fa;">
+            <td colspan="4" style="padding-left:1.2rem;font-size:.85rem;"><strong>Total Weightage</strong></td>
+            <td>
+              {% set tw = sheet.goals | sum(attribute='weightage') %}
+              <strong class="{% if tw == 100 %}text-success{% else %}text-danger{% endif %}">{{ tw }}% / 100%</strong>
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Confirm Modal -->
+<div class="modal fade" id="approveModal{{ sheet.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-bold">Confirm Approval</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" style="font-size:.875rem;">
+        Approve goals for <strong>{{ sheet.employee.name }}</strong>? Goals will be <strong>locked</strong> and cannot be edited without Admin intervention.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <form method="POST" action="/manager/sheets/{{ sheet.id }}/approve">
+          <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i>Approve & Lock</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rework Modal -->
+<div class="modal fade" id="reworkModal{{ sheet.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/manager/sheets/{{ sheet.id }}/return">
+        <div class="modal-header"><h6 class="modal-title fw-bold">Return for Rework</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Rework Comment <span class="text-danger">*</span></label>
+          <textarea name="rework_comment" class="form-control" rows="3" placeholder="Explain what needs to be changed…" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i>Return</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Inline Edit Modal -->
+<div class="modal fade" id="inlineEditModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="inlineEditForm">
+        <div class="modal-header" style="background:#1E3A5F;"><h6 class="modal-title text-white fw-bold">Edit Goal (Inline)</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="alert alert-info py-2" style="font-size:.82rem;"><i class="bi bi-info-circle me-1"></i>You can edit the target value/date and weightage before approving.</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Target Value</label>
+              <input type="number" name="target_value" id="inlineTargetValue" class="form-control" step="any"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Target Date</label>
+              <input type="date" name="target_date" id="inlineTargetDate" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Weightage (%)</label>
+              <input type="number" name="weightage" id="inlineWeightage" class="form-control" min="10" max="100" step="1" required/>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Push Shared Goal Modal -->
+<div class="modal fade" id="sharedGoalModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/manager/shared-goals/push">
+        <div class="modal-header" style="background:#F57C00;"><h5 class="modal-title text-white fw-bold"><i class="bi bi-share me-2"></i>Push Shared Goal to Team</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Thrust Area <span class="text-danger">*</span></label>
+              <select name="thrust_area_id" class="form-select" required>
+                {% for area in thrust_areas %}<option value="{{ area.id }}">{{ area.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">UoM Type <span class="text-danger">*</span></label>
+              <select name="uom_type" class="form-select" required>
+                <option value="NUMERIC_MIN">Numeric Min (higher better)</option>
+                <option value="NUMERIC_MAX">Numeric Max (lower better)</option>
+                <option value="PERCENT_MIN">% Min</option><option value="PERCENT_MAX">% Max</option>
+                <option value="TIMELINE">Timeline</option><option value="ZERO_BASED">Zero-based</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Goal Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" class="form-control" required maxlength="200" placeholder="Departmental KPI title…"/>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea name="description" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Target Value</label>
+              <input type="number" name="target_value" class="form-control" step="any"/>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Target Date</label>
+              <input type="date" name="target_date" class="form-control"/>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Default Weightage (%) <span class="text-danger">*</span></label>
+              <input type="number" name="default_weightage" class="form-control" min="10" max="100" value="10" required/>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Employee IDs (comma-separated) <span class="text-danger">*</span></label>
+              <input type="text" name="employee_ids" class="form-control" placeholder="e.g. 3,4,5" required/>
+              <div class="form-text">Enter the user IDs of team members to push this goal to.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-accent"><i class="bi bi-send me-1"></i>Push to Team</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openInlineEdit(goalId, targetVal, targetDate, weightage) {
+  document.getElementById('inlineEditForm').action = '/manager/goals/' + goalId + '/edit-inline';
+  document.getElementById('inlineTargetValue').value = targetVal || '';
+  document.getElementById('inlineTargetDate').value = targetDate || '';
+  document.getElementById('inlineWeightage').value = weightage;
+  new bootstrap.Modal(document.getElementById('inlineEditModal')).show();
+}
+</script>
+{% endblock %}

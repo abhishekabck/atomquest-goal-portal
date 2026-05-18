@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+{% block title %}My Goals{% endblock %}
+{% block page_title %}My Goals{% endblock %}
+
+{% block extra_head %}
+<style>
+  .uom-hint { font-size:.75rem; color:#6c757d; }
+  #weightage-remaining { font-weight:700; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'added' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Goal added successfully.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'submitted' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Goals submitted for approval.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'deleted' %}<div class="alert alert-warning alert-dismissible fade show"><i class="bi bi-trash me-2"></i>Goal deleted.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'max_goals' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Maximum 8 goals allowed per employee.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'min_weight' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Minimum weightage per goal is 10%.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'weight_exceeded' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Total weightage cannot exceed 100%.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'weightage_not_100' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Total weightage must equal exactly 100% before submitting.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'window_closed' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Goal setting window is currently closed.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'locked' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-lock me-2"></i>Goals are locked after approval. Contact Admin to unlock.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+{% if sheet and sheet.status == GoalSheetStatus.REWORK_REQUESTED %}
+<div class="alert alert-warning d-flex align-items-start gap-3 mb-3">
+  <i class="bi bi-arrow-counterclockwise fs-4 mt-1"></i>
+  <div><strong>Rework Requested</strong><div class="mt-1">{{ sheet.rework_comment }}</div></div>
+</div>
+{% endif %}
+
+{% if not cycle %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No active cycle. Contact Admin.</div>
+{% else %}
+
+<div class="row g-4">
+  <!-- Goals List -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-bullseye me-2" style="color:#1E3A5F;"></i>Goals — {{ cycle.name }}</h6>
+        <div class="d-flex gap-2 align-items-center">
+          {% if sheet %}
+            {% if sheet.status.value == 'APPROVED' %}
+              <span class="badge" style="background:#d1e7dd;color:#0f5132;font-size:.78rem;padding:.35rem .7rem;"><i class="bi bi-lock me-1"></i>Approved & Locked</span>
+            {% elif sheet.status.value == 'SUBMITTED' %}
+              <span class="badge" style="background:#cfe2ff;color:#084298;font-size:.78rem;padding:.35rem .7rem;"><i class="bi bi-clock me-1"></i>Awaiting Approval</span>
+            {% endif %}
+          {% endif %}
+          {% if goal_setting_open and sheet and sheet.status.value in ['DRAFT','REWORK_REQUESTED'] %}
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addGoalModal"
+              {% if sheet and sheet.goals|length >= 8 %}disabled title="Max 8 goals"{% endif %}>
+              <i class="bi bi-plus-lg me-1"></i>Add Goal
+            </button>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        {% if not sheet or not sheet.goals %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-3" style="color:#adb5bd;"></i>
+            <p class="mb-2">No goals added yet.</p>
+            {% if goal_setting_open %}
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGoalModal">
+                <i class="bi bi-plus-circle me-2"></i>Add First Goal
+              </button>
+            {% else %}
+              <p class="text-warning"><i class="bi bi-clock me-1"></i>Goal setting window is closed.</p>
+            {% endif %}
+          </div>
+        {% else %}
+          {% for goal in sheet.goals %}
+          <div class="goal-card {% if goal.is_shared %}shared{% endif %} mb-3">
+            <div class="d-flex align-items-start justify-content-between">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="goal-title">{{ goal.title }}</span>
+                  {% if goal.is_shared %}<span class="badge bg-warning text-dark" style="font-size:.68rem;">Shared</span>{% endif %}
+                  {% if goal.is_locked %}<span class="badge bg-secondary" style="font-size:.68rem;"><i class="bi bi-lock"></i></span>{% endif %}
+                </div>
+                <div class="goal-meta mb-2">
+                  <span class="me-3"><i class="bi bi-layers me-1"></i>{{ goal.thrust_area.name }}</span>
+                  <span class="me-3"><i class="bi bi-rulers me-1"></i>{{ goal.uom_type.value.replace('_',' ') }}</span>
+                  {% if goal.target_value is not none %}<span class="me-3"><i class="bi bi-bullseye me-1"></i>Target: {{ goal.target_value }}</span>{% endif %}
+                  {% if goal.target_date %}<span class="me-3"><i class="bi bi-calendar me-1"></i>By: {{ goal.target_date }}</span>{% endif %}
+                  {% if goal.description %}<span class="me-3">{{ goal.description[:80] }}{% if goal.description|length > 80 %}…{% endif %}</span>{% endif %}
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2 ms-3">
+                <div class="text-end">
+                  <div style="font-size:1.1rem;font-weight:700;color:#1E3A5F;">{{ goal.weightage }}%</div>
+                  <div style="font-size:.7rem;color:#6c757d;">weight</div>
+                </div>
+                {% if not goal.is_locked and sheet.status.value in ['DRAFT','REWORK_REQUESTED'] %}
+                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ goal.id }}, '{{ goal.thrust_area_id }}', `{{ goal.title|replace("'","\\'")|replace('"','\\"') }}`, `{{ goal.description|replace("'","\\'")|replace('"','\\"') }}`, '{{ goal.uom_type.value }}', {{ goal.target_value if goal.target_value is not none else 'null' }}, '{{ goal.target_date if goal.target_date else "" }}', {{ goal.weightage }}, {{ 'true' if goal.is_shared else 'false' }})">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                {% if not goal.is_shared %}
+                <form method="POST" action="/employee/goals/{{ goal.id }}/delete" onsubmit="return confirm('Delete this goal?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if sheet and sheet.goals %}
+      <div class="card-footer bg-white">
+        {% set total_w = sheet.goals | sum(attribute='weightage') %}
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span style="font-size:.85rem;color:#6c757d;">Total Weightage</span>
+          <span class="fw-bold {% if total_w == 100 %}text-success{% elif total_w > 100 %}text-danger{% else %}text-warning{% endif %}">
+            {{ total_w }}% / 100%
+            {% if total_w == 100 %}<i class="bi bi-check-circle-fill ms-1"></i>{% endif %}
+          </span>
+        </div>
+        <div class="weightage-bar">
+          <div class="weightage-bar-fill" style="width:{{ [total_w,100]|min }}%;background:{% if total_w == 100 %}#4CAF50{% elif total_w > 100 %}#dc3545{% else %}#F57C00{% endif %};"></div>
+        </div>
+        {% if sheet.status.value in ['DRAFT','REWORK_REQUESTED'] and sheet.goals %}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <small class="text-muted"><i class="bi bi-info-circle me-1"></i>{{ sheet.goals|length }}/8 goals used &nbsp;·&nbsp; Remaining: {{ 100 - total_w }}%</small>
+          {% if total_w == 100 %}
+          <form method="POST" action="/employee/goals/submit" onsubmit="return confirm('Submit goals for manager approval? You cannot edit after submission.');">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-send me-2"></i>Submit for Approval
+            </button>
+          </form>
+          {% else %}
+          <button class="btn btn-success" disabled title="Total weightage must be 100%">
+            <i class="bi bi-send me-2"></i>Submit for Approval
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Rules Panel -->
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2" style="color:#F57C00;"></i>Validation Rules</h6></div>
+      <div class="card-body">
+        {% set total_w = (sheet.goals | sum(attribute='weightage')) if sheet and sheet.goals else 0 %}
+        {% set goal_count = (sheet.goals|length) if sheet and sheet.goals else 0 %}
+        <ul class="list-unstyled mb-0" style="font-size:.85rem;">
+          <li class="mb-2 {% if total_w == 100 %}text-success{% else %}text-muted{% endif %}">
+            <i class="bi {% if total_w == 100 %}bi-check-circle-fill{% else %}bi-circle{% endif %} me-2"></i>Total weightage = 100%
+            <span class="ms-1 fw-bold">{{ total_w }}%</span>
+          </li>
+          <li class="mb-2 text-muted"><i class="bi bi-circle me-2"></i>Min 10% per goal</li>
+          <li class="mb-2 {% if goal_count <= 8 %}text-success{% else %}text-danger{% endif %}">
+            <i class="bi {% if goal_count <= 8 %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %} me-2"></i>Max 8 goals
+            <span class="ms-1 fw-bold">{{ goal_count }}/8</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-rulers me-2" style="color:#1E3A5F;"></i>UoM Guide</h6></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:.8rem;">
+          <thead><tr><th>Type</th><th>Used For</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td>Numeric Min</td><td>Revenue, Volume</td><td>Actual÷Target</td></tr>
+            <tr><td>Numeric Max</td><td>TAT, Cost</td><td>Target÷Actual</td></tr>
+            <tr><td>% Min</td><td>Growth %</td><td>Actual÷Target</td></tr>
+            <tr><td>% Max</td><td>Defect %</td><td>Target÷Actual</td></tr>
+            <tr><td>Timeline</td><td>Project Completion</td><td>Date vs Deadline</td></tr>
+            <tr><td>Zero Based</td><td>Safety Incidents</td><td>0=100%, else 0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Goal Modal -->
+<div class="modal fade" id="addGoalModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/employee/goals/add">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white"><i class="bi bi-plus-circle me-2"></i>Add New Goal</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Thrust Area <span class="text-danger">*</span></label>
+              <select name="thrust_area_id" class="form-select" required>
+                <option value="">Select thrust area…</option>
+                {% for area in thrust_areas %}
+                <option value="{{ area.id }}">{{ area.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Unit of Measurement <span class="text-danger">*</span></label>
+              <select name="uom_type" id="addUomType" class="form-select" required onchange="updateTargetField('add')">
+                <option value="">Select UoM…</option>
+                <option value="NUMERIC_MIN">Numeric (Min — higher is better)</option>
+                <option value="NUMERIC_MAX">Numeric (Max — lower is better)</option>
+                <option value="PERCENT_MIN">% (Min — higher is better)</option>
+                <option value="PERCENT_MAX">% (Max — lower is better)</option>
+                <option value="TIMELINE">Timeline (date-based)</option>
+                <option value="ZERO_BASED">Zero-based (0 = success)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Goal Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" class="form-control" placeholder="e.g. Increase Q3 sales revenue by 20%" required maxlength="200"/>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea name="description" class="form-control" rows="2" placeholder="Brief description of this goal…" maxlength="500"></textarea>
+            </div>
+            <div class="col-md-6" id="addTargetValueDiv">
+              <label class="form-label fw-semibold">Target Value</label>
+              <input type="number" name="target_value" id="addTargetValue" class="form-control" placeholder="e.g. 1000000" step="any"/>
+              <div class="uom-hint mt-1" id="addUomHint"></div>
+            </div>
+            <div class="col-md-6" id="addTargetDateDiv" style="display:none;">
+              <label class="form-label fw-semibold">Target Date <span class="text-danger">*</span></label>
+              <input type="date" name="target_date" id="addTargetDate" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Weightage (%) <span class="text-danger">*</span></label>
+              <input type="number" name="weightage" id="addWeightage" class="form-control" min="10" max="100" step="1" placeholder="10–100" required oninput="updateRemaining()"/>
+              <div class="uom-hint mt-1">Min 10% · Remaining: <span id="weightage-remaining" style="color:#F57C00;">
+                {{ 100 - ((sheet.goals | sum(attribute='weightage')) if sheet and sheet.goals else 0) }}%
+              </span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Goal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Goal Modal -->
+<div class="modal fade" id="editGoalModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" id="editGoalForm">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white"><i class="bi bi-pencil me-2"></i>Edit Goal</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="sharedGoalNotice" class="alert alert-info py-2 mb-3" style="display:none;font-size:.85rem;">
+            <i class="bi bi-share me-2"></i>This is a <strong>shared goal</strong>. Only weightage can be modified.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6" id="editThrustDiv">
+              <label class="form-label fw-semibold">Thrust Area <span class="text-danger">*</span></label>
+              <select name="thrust_area_id" id="editThrustArea" class="form-select" required>
+                {% for area in thrust_areas %}
+                <option value="{{ area.id }}">{{ area.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6" id="editUomDiv">
+              <label class="form-label fw-semibold">UoM <span class="text-danger">*</span></label>
+              <select name="uom_type" id="editUomType" class="form-select" required onchange="updateTargetField('edit')">
+                <option value="NUMERIC_MIN">Numeric Min</option>
+                <option value="NUMERIC_MAX">Numeric Max</option>
+                <option value="PERCENT_MIN">% Min</option>
+                <option value="PERCENT_MAX">% Max</option>
+                <option value="TIMELINE">Timeline</option>
+                <option value="ZERO_BASED">Zero-based</option>
+              </select>
+            </div>
+            <div class="col-12" id="editTitleDiv">
+              <label class="form-label fw-semibold">Goal Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="editTitle" class="form-control" required maxlength="200"/>
+            </div>
+            <div class="col-12" id="editDescDiv">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea name="description" id="editDesc" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6" id="editTargetValueDiv">
+              <label class="form-label fw-semibold">Target Value</label>
+              <input type="number" name="target_value" id="editTargetValue" class="form-control" step="any"/>
+            </div>
+            <div class="col-md-6" id="editTargetDateDiv" style="display:none;">
+              <label class="form-label fw-semibold">Target Date</label>
+              <input type="date" name="target_date" id="editTargetDate" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Weightage (%) <span class="text-danger">*</span></label>
+              <input type="number" name="weightage" id="editWeightage" class="form-control" min="10" max="100" step="1" required/>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const currentTotal = {{ (sheet.goals | sum(attribute='weightage')) if sheet and sheet.goals else 0 }};
+
+  function updateRemaining() {
+    const val = parseFloat(document.getElementById('addWeightage').value) || 0;
+    const remaining = 100 - currentTotal - val;
+    const el = document.getElementById('weightage-remaining');
+    el.textContent = remaining.toFixed(0) + '%';
+    el.style.color = remaining < 0 ? '#dc3545' : '#F57C00';
+  }
+
+  function updateTargetField(prefix) {
+    const uom = document.getElementById(prefix + 'UomType').value;
+    const isTimeline = uom === 'TIMELINE';
+    const isZero = uom === 'ZERO_BASED';
+    document.getElementById(prefix + 'TargetValueDiv').style.display = (isTimeline || isZero) ? 'none' : '';
+    if (document.getElementById(prefix + 'TargetDateDiv')) {
+      document.getElementById(prefix + 'TargetDateDiv').style.display = isTimeline ? '' : 'none';
+    }
+    const hints = {
+      'NUMERIC_MIN': 'Higher actual = better score (e.g. Revenue: target 1,000,000)',
+      'NUMERIC_MAX': 'Lower actual = better score (e.g. TAT: target 5 days)',
+      'PERCENT_MIN': 'Higher % = better (e.g. Growth: target 20%)',
+      'PERCENT_MAX': 'Lower % = better (e.g. Defects: target 2%)',
+      'TIMELINE': 'Complete by or before target date',
+      'ZERO_BASED': 'Achievement = 0 scores 100%, anything else = 0%'
+    };
+    const hintEl = document.getElementById(prefix + 'UomHint');
+    if (hintEl) hintEl.textContent = hints[uom] || '';
+    if (prefix === 'add') {
+      const tvInput = document.getElementById('addTargetValue');
+      if (isZero) { tvInput.value = ''; tvInput.disabled = true; }
+      else { tvInput.disabled = false; }
+    }
+  }
+
+  function openEditModal(id, thrustId, title, desc, uom, targetVal, targetDate, weightage, isShared) {
+    document.getElementById('editGoalForm').action = '/employee/goals/' + id + '/edit';
+    document.getElementById('editTitle').value = title;
+    document.getElementById('editDesc').value = desc;
+    document.getElementById('editThrustArea').value = thrustId;
+    document.getElementById('editUomType').value = uom;
+    document.getElementById('editWeightage').value = weightage;
+
+    if (targetVal !== null && targetVal !== undefined) {
+      document.getElementById('editTargetValue').value = targetVal;
+    }
+    if (targetDate) {
+      document.getElementById('editTargetDate').value = targetDate;
+    }
+
+    const isTimeline = uom === 'TIMELINE';
+    const isZero = uom === 'ZERO_BASED';
+    document.getElementById('editTargetValueDiv').style.display = (isTimeline || isZero) ? 'none' : '';
+    document.getElementById('editTargetDateDiv').style.display = isTimeline ? '' : 'none';
+
+    if (isShared) {
+      document.getElementById('sharedGoalNotice').style.display = '';
+      ['editThrustDiv','editUomDiv','editTitleDiv','editDescDiv','editTargetValueDiv','editTargetDateDiv'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.querySelectorAll('input,select,textarea').forEach(i => i.disabled = true);
+      });
+    } else {
+      document.getElementById('sharedGoalNotice').style.display = 'none';
+      ['editThrustDiv','editUomDiv','editTitleDiv','editDescDiv','editTargetValueDiv','editTargetDateDiv'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.querySelectorAll('input,select,textarea').forEach(i => i.disabled = false);
+      });
+    }
+
+    new bootstrap.Modal(document.getElementById('editGoalModal')).show();
+  }
+</script>
+{% endblock %}

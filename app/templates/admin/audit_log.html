@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-shield-check me-2" style="color:#1E3A5F;"></i>Audit Trail (last 200 entries)</h6>
+    <span class="badge bg-secondary">{{ logs|length }} records</span>
+  </div>
+  <div class="card-body p-0">
+    {% if not logs %}
+    <div class="text-center py-5 text-muted"><i class="bi bi-journal-x fs-1 d-block mb-3"></i>No audit entries yet.</div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" style="font-size:.82rem;">
+        <thead><tr>
+          <th style="padding-left:1.2rem;">Time</th><th>User</th><th>Action</th>
+          <th>Entity</th><th>Field</th><th>Old Value</th><th>New Value</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td style="padding-left:1.2rem;white-space:nowrap;color:#6c757d;">
+              {{ log.timestamp.strftime('%d %b %Y') if log.timestamp else '—' }}<br>
+              <small>{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</small>
+            </td>
+            <td class="fw-semibold">{{ log.user.name if log.user else log.user_id }}</td>
+            <td>
+              <span class="badge
+                {% if 'APPROVE' in log.action %}bg-success
+                {% elif 'UNLOCK' in log.action %}bg-warning text-dark
+                {% elif 'REWORK' in log.action %}bg-warning text-dark
+                {% elif 'EDIT' in log.action %}bg-info text-dark
+                {% else %}bg-secondary{% endif %}"
+                style="font-size:.7rem;">{{ log.action }}</span>
+            </td>
+            <td>{{ log.entity_type }} #{{ log.entity_id }}</td>
+            <td style="color:#6c757d;">{{ log.field_changed or '—' }}</td>
+            <td style="color:#dc3545;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.old_value or '' }}">{{ log.old_value or '—' }}</td>
+            <td style="color:#198754;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.new_value or '' }}">{{ log.new_value or '—' }}</td>
+            <td style="color:#6c757d;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.description or '' }}">{{ log.description or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

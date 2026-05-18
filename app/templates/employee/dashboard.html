@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+
+{% block content %}
+{% set url_params = request.query_params %}
+{% if url_params.get('success') == 'submitted' %}
+<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Goals submitted successfully! Awaiting manager approval.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endif %}
+
+{% if not cycle %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No active goal cycle found. Please contact your HR/Admin team.</div>
+{% else %}
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#e8f0fe;"><i class="bi bi-bullseye" style="color:#1E3A5F;"></i></div>
+      <div>
+        <div class="stat-val">{{ sheet.goals|length if sheet else 0 }}</div>
+        <div class="stat-label">Total Goals</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#fff3cd;"><i class="bi bi-hourglass-split" style="color:#856404;"></i></div>
+      <div>
+        <div class="stat-val">
+          {% if sheet %}
+            {% if sheet.status == GoalSheetStatus.APPROVED %}
+              <span style="color:#0f5132;font-size:1rem;">Approved</span>
+            {% elif sheet.status == GoalSheetStatus.SUBMITTED %}
+              <span style="color:#084298;font-size:1rem;">Pending</span>
+            {% elif sheet.status == GoalSheetStatus.REWORK_REQUESTED %}
+              <span style="color:#856404;font-size:1rem;">Rework</span>
+            {% else %}
+              <span style="color:#6c757d;font-size:1rem;">Draft</span>
+            {% endif %}
+          {% else %}
+            <span style="color:#6c757d;font-size:1rem;">—</span>
+          {% endif %}
+        </div>
+        <div class="stat-label">Goal Sheet Status</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#d1e7dd;"><i class="bi bi-percent" style="color:#0f5132;"></i></div>
+      <div>
+        <div class="stat-val">
+          {% if sheet %}{{ (sheet.goals | sum(attribute='weightage')) | round(1) }}%{% else %}0%{% endif %}
+        </div>
+        <div class="stat-label">Total Weightage</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#fce4ec;"><i class="bi bi-calendar3" style="color:#b71c1c;"></i></div>
+      <div>
+        <div class="stat-val">{{ active_quarter if active_quarter else "—" }}</div>
+        <div class="stat-label">Active Quarter</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rework banner -->
+{% if sheet and sheet.status == GoalSheetStatus.REWORK_REQUESTED %}
+<div class="alert alert-warning d-flex align-items-center gap-3">
+  <i class="bi bi-arrow-counterclockwise fs-4"></i>
+  <div>
+    <strong>Goals returned for rework</strong>
+    <div style="font-size:.875rem;">{{ sheet.rework_comment }}</div>
+  </div>
+  <a href="/employee/goals" class="btn btn-warning btn-sm ms-auto">Edit Goals</a>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Goal Sheet Summary -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-list-check me-2" style="color:#1E3A5F;"></i>My Goal Sheet — {{ cycle.name }}</h6>
+        <a href="/employee/goals" class="btn btn-sm btn-primary">
+          {% if sheet and sheet.status == GoalSheetStatus.APPROVED %}View Goals{% else %}Manage Goals{% endif %}
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if not sheet or not sheet.goals %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            No goals created yet.
+            <a href="/employee/goals" class="d-block mt-2">Create your first goal</a>
+          </div>
+        {% else %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead><tr>
+                <th style="padding-left:1.2rem;">Goal</th>
+                <th>UoM</th>
+                <th>Weight</th>
+                <th>Q{{ active_quarter[-1] if active_quarter else '—' }} Progress</th>
+              </tr></thead>
+              <tbody>
+                {% for goal, ci in goals_with_checkins %}
+                <tr>
+                  <td style="padding-left:1.2rem;">
+                    <div class="fw-600" style="font-size:.875rem;">{{ goal.title[:50] }}{% if goal.title|length > 50 %}…{% endif %}</div>
+                    <div style="font-size:.75rem;color:#6c757d;">{{ goal.thrust_area.name }}</div>
+                  </td>
+                  <td><span class="badge bg-light text-dark" style="font-size:.7rem;">{{ goal.uom_type.value.replace('_',' ') }}</span></td>
+                  <td><span class="fw-bold" style="color:#1E3A5F;">{{ goal.weightage }}%</span></td>
+                  <td>
+                    {% if ci and ci.progress_score is not none %}
+                      <div class="progress progress-sm" style="width:80px;">
+                        <div class="progress-bar {% if ci.progress_score >= 80 %}bg-success{% elif ci.progress_score >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                             style="width:{{ [ci.progress_score, 100]|min }}%;"></div>
+                      </div>
+                      <small style="color:#6c757d;">{{ ci.progress_score|round(1) }}%</small>
+                    {% else %}
+                      <span style="color:#adb5bd;font-size:.8rem;">Not started</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <!-- Weightage total bar -->
+          <div class="px-3 py-2 border-top" style="background:#f8f9fa;">
+            {% set total_w = sheet.goals | sum(attribute='weightage') %}
+            <div class="d-flex justify-content-between" style="font-size:.8rem;color:#6c757d;">
+              <span>Total Weightage</span>
+              <span class="fw-bold {% if total_w == 100 %}text-success{% else %}text-danger{% endif %}">{{ total_w }}% / 100%</span>
+            </div>
+            <div class="weightage-bar mt-1">
+              <div class="weightage-bar-fill {% if total_w > 100 %}bg-danger{% endif %}" style="width:{{ [total_w, 100]|min }}%;background:{% if total_w == 100 %}#4CAF50{% elif total_w > 100 %}#dc3545{% else %}#F57C00{% endif %};"></div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions + Status -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-lightning me-2" style="color:#F57C00;"></i>Quick Actions</h6></div>
+      <div class="card-body d-flex flex-column gap-2">
+        {% if not sheet or sheet.status == GoalSheetStatus.DRAFT or sheet.status == GoalSheetStatus.REWORK_REQUESTED %}
+          <a href="/employee/goals" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Manage My Goals
+          </a>
+        {% endif %}
+        {% if active_quarter and sheet and sheet.status == GoalSheetStatus.APPROVED %}
+          <a href="/employee/checkin" class="btn btn-accent">
+            <i class="bi bi-clipboard-check me-2"></i>Update {{ active_quarter }} Check-in
+          </a>
+        {% elif not active_quarter %}
+          <button class="btn btn-secondary" disabled>
+            <i class="bi bi-clock me-2"></i>Check-in window not open
+          </button>
+        {% endif %}
+        <a href="/employee/notifications" class="btn btn-outline-secondary">
+          <i class="bi bi-bell me-2"></i>Notifications
+          {% if unread_count > 0 %}<span class="badge bg-danger ms-1">{{ unread_count }}</span>{% endif %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Cycle Schedule -->
+    <div class="card">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-calendar3 me-2" style="color:#1E3A5F;"></i>Cycle Schedule</h6></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr class="{% if cycle.goal_setting_start and cycle.goal_setting_end %}table-primary{% endif %}">
+              <td style="padding-left:1rem;font-size:.8rem;"><i class="bi bi-pencil-square me-1"></i>Goal Setting</td>
+              <td style="font-size:.8rem;">{{ cycle.goal_setting_start }} — {{ cycle.goal_setting_end }}</td>
+            </tr>
+            {% for q, qs, qe in [('Q1', cycle.q1_start, cycle.q1_end), ('Q2', cycle.q2_start, cycle.q2_end), ('Q3', cycle.q3_start, cycle.q3_end), ('Q4', cycle.q4_start, cycle.q4_end)] %}
+            {% if qs %}
+            <tr class="{% if active_quarter == q %}table-warning{% endif %}">
+              <td style="padding-left:1rem;font-size:.8rem;"><i class="bi bi-check2 me-1"></i>{{ q }} Check-in</td>
+              <td style="font-size:.8rem;">{{ qs }} — {{ qe }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

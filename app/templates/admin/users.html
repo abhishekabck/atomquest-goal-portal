@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'added' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>User added.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'updated' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>User updated.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('error') == 'email_exists' %}<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-x-circle me-2"></i>Email already in use.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+    <i class="bi bi-person-plus me-2"></i>Add User
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-people me-2" style="color:#1E3A5F;"></i>All Users ({{ users|length }})</h6></div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead><tr>
+          <th style="padding-left:1.2rem;">ID</th><th>Name</th><th>Email</th>
+          <th>Role</th><th>Department</th><th>Manager</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td style="padding-left:1.2rem;color:#6c757d;font-size:.8rem;">{{ u.id }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:30px;height:30px;background:{% if u.role.value=='ADMIN' %}#7b1fa2{% elif u.role.value=='MANAGER' %}#1E3A5F{% else %}#F57C00{% endif %};border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:700;flex-shrink:0;">{{ u.name[0].upper() }}</div>
+                <span class="fw-semibold" style="font-size:.875rem;">{{ u.name }}</span>
+              </div>
+            </td>
+            <td style="font-size:.85rem;">{{ u.email }}</td>
+            <td>
+              <span class="badge {% if u.role.value=='ADMIN' %}bg-purple{% elif u.role.value=='MANAGER' %}bg-primary{% else %}bg-secondary{% endif %}"
+                style="{% if u.role.value=='ADMIN' %}background:#7b1fa2;{% endif %}font-size:.72rem;">
+                {{ u.role.value }}
+              </span>
+            </td>
+            <td style="font-size:.85rem;">{{ u.department or '—' }}</td>
+            <td style="font-size:.85rem;">{{ u.manager.name if u.manager else '—' }}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary"
+                onclick="openEditUser({{ u.id }}, '{{ u.name|replace("'","\\'") }}', '{{ u.role.value }}', '{{ u.department or '' }}', {{ u.manager_id or 'null' }}, {{ 'true' if u.is_active else 'false' }})">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/admin/users/add">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white fw-bold"><i class="bi bi-person-plus me-2"></i>Add New User</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required/></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Email <span class="text-danger">*</span></label><input type="email" name="email" class="form-control" required/></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Password <span class="text-danger">*</span></label><input type="password" name="password" class="form-control" required minlength="6"/></div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Role <span class="text-danger">*</span></label>
+              <select name="role" class="form-select" required>
+                <option value="EMPLOYEE">Employee</option>
+                <option value="MANAGER">Manager</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Department</label><input type="text" name="department" class="form-control"/></div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Manager (L1)</label>
+              <select name="manager_id" class="form-select">
+                <option value="">— None —</option>
+                {% for m in managers %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Add User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editUserForm">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white fw-bold"><i class="bi bi-pencil me-2"></i>Edit User</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12"><label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label><input type="text" name="name" id="editUserName" class="form-control" required/></div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Role</label>
+              <select name="role" id="editUserRole" class="form-select">
+                <option value="EMPLOYEE">Employee</option><option value="MANAGER">Manager</option><option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Department</label><input type="text" name="department" id="editUserDept" class="form-control"/></div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Manager (L1)</label>
+              <select name="manager_id" id="editUserManager" class="form-select">
+                <option value="">— None —</option>
+                {% for m in managers %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Status</label>
+              <select name="is_active" id="editUserActive" class="form-select">
+                <option value="true">Active</option><option value="false">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditUser(id, name, role, dept, managerId, isActive) {
+  document.getElementById('editUserForm').action = '/admin/users/' + id + '/edit';
+  document.getElementById('editUserName').value = name;
+  document.getElementById('editUserRole').value = role;
+  document.getElementById('editUserDept').value = dept;
+  document.getElementById('editUserManager').value = managerId || '';
+  document.getElementById('editUserActive').value = isActive ? 'true' : 'false';
+  new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Escalations{% endblock %}
+{% block page_title %}Escalation Management{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'rule_added' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Escalation rule added.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'resolved' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Escalation resolved.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="row g-4">
+  <!-- Rules -->
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-gear me-2" style="color:#1E3A5F;"></i>Escalation Rules</h6>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+          <i class="bi bi-plus-lg"></i> Add Rule
+        </button>
+      </div>
+      <div class="card-body p-0">
+        {% if not rules %}
+        <div class="text-center py-4 text-muted" style="font-size:.875rem;">No rules configured yet.</div>
+        {% else %}
+        <table class="table table-sm mb-0" style="font-size:.82rem;">
+          <thead><tr><th style="padding-left:1rem;">Rule Type</th><th>Days</th><th>Cycle</th><th>Active</th></tr></thead>
+          <tbody>
+            {% for r in rules %}
+            <tr>
+              <td style="padding-left:1rem;">
+                <span class="badge {% if r.rule_type.value == 'GOAL_NOT_SUBMITTED' %}bg-warning text-dark{% elif r.rule_type.value == 'GOAL_NOT_APPROVED' %}bg-info text-dark{% else %}bg-danger{% endif %}" style="font-size:.68rem;">
+                  {{ r.rule_type.value.replace('_',' ') }}
+                </span>
+              </td>
+              <td>After <strong>{{ r.days_threshold }}</strong> days</td>
+              <td style="color:#6c757d;">{{ r.cycle.name }}</td>
+              <td>{% if r.is_active %}<span class="badge bg-success" style="font-size:.68rem;">On</span>{% else %}<span class="badge bg-secondary" style="font-size:.68rem;">Off</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2" style="color:#F57C00;"></i>Rule Types</h6></div>
+      <div class="card-body" style="font-size:.82rem;">
+        <div class="mb-2"><span class="badge bg-warning text-dark me-2">GOAL_NOT_SUBMITTED</span>Employee hasn't submitted goals within N days of cycle open.</div>
+        <div class="mb-2"><span class="badge bg-info text-dark me-2">GOAL_NOT_APPROVED</span>Manager hasn't approved within N days of submission.</div>
+        <div><span class="badge bg-danger me-2">CHECKIN_NOT_COMPLETED</span>Quarterly check-in not done within N days of window open.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open Escalations -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle me-2" style="color:#dc3545;"></i>Open Escalations</h6>
+        <span class="badge bg-danger">{{ escalations | selectattr('resolved_at', 'none') | list | length }} open</span>
+      </div>
+      <div class="card-body p-0">
+        {% set open_escs = escalations | selectattr('resolved_at', 'none') | list %}
+        {% if not open_escs %}
+        <div class="text-center py-4 text-muted"><i class="bi bi-check2-all fs-2 d-block mb-2 text-success"></i>No open escalations.</div>
+        {% else %}
+        <table class="table table-hover mb-0" style="font-size:.82rem;">
+          <thead><tr><th style="padding-left:1rem;">User</th><th>Rule</th><th>Notes</th><th>Triggered</th><th>Action</th></tr></thead>
+          <tbody>
+            {% for e in open_escs %}
+            <tr>
+              <td style="padding-left:1rem;" class="fw-semibold">{{ e.target_user.name }}</td>
+              <td><span class="badge bg-secondary" style="font-size:.68rem;">{{ e.rule.rule_type.value.replace('_',' ') }}</span></td>
+              <td style="color:#6c757d;">{{ e.notes or '—' }}</td>
+              <td style="color:#6c757d;">{{ e.triggered_at.strftime('%d %b') if e.triggered_at else '—' }}</td>
+              <td>
+                <form method="POST" action="/admin/escalations/{{ e.id }}/resolve">
+                  <button type="submit" class="btn btn-xs btn-outline-success" style="font-size:.72rem;padding:.2rem .5rem;">
+                    <i class="bi bi-check2"></i> Resolve
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Resolved -->
+    {% set resolved_escs = escalations | selectattr('resolved_at') | list %}
+    {% if resolved_escs %}
+    <div class="card mt-3">
+      <div class="card-header py-2"><h6 class="mb-0 fw-bold" style="font-size:.875rem;"><i class="bi bi-check2-all me-2 text-success"></i>Resolved ({{ resolved_escs|length }})</h6></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:.8rem;">
+          <thead><tr><th style="padding-left:1rem;">User</th><th>Rule</th><th>Resolved</th></tr></thead>
+          <tbody>
+            {% for e in resolved_escs[:10] %}
+            <tr>
+              <td style="padding-left:1rem;">{{ e.target_user.name }}</td>
+              <td style="color:#6c757d;">{{ e.rule.rule_type.value.replace('_',' ') }}</td>
+              <td style="color:#198754;">{{ e.resolved_at.strftime('%d %b %Y') if e.resolved_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Add Rule Modal -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/admin/escalation-rules/add">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white fw-bold"><i class="bi bi-plus-circle me-2"></i>Add Escalation Rule</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cycle <span class="text-danger">*</span></label>
+            <select name="cycle_id" class="form-select" required>
+              {% for c in cycles %}<option value="{{ c.id }}" {% if c.is_active %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Rule Type <span class="text-danger">*</span></label>
+            <select name="rule_type" class="form-select" required>
+              <option value="GOAL_NOT_SUBMITTED">Goal Not Submitted</option>
+              <option value="GOAL_NOT_APPROVED">Goal Not Approved</option>
+              <option value="CHECKIN_NOT_COMPLETED">Check-in Not Completed</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Days Threshold <span class="text-danger">*</span></label>
+            <input type="number" name="days_threshold" class="form-control" min="1" max="90" value="7" required/>
+            <div class="form-text">Trigger escalation after this many days of inaction.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

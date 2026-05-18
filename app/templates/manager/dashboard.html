@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Manager Dashboard{% endblock %}
+{% block page_title %}Manager Dashboard{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#e8f0fe;"><i class="bi bi-people" style="color:#1E3A5F;"></i></div>
+      <div><div class="stat-val">{{ team_data|length }}</div><div class="stat-label">Team Members</div></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#fff3cd;"><i class="bi bi-hourglass-split" style="color:#856404;"></i></div>
+      <div><div class="stat-val">{{ pending_count }}</div><div class="stat-label">Pending Approvals</div></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#d1e7dd;"><i class="bi bi-check2-all" style="color:#0f5132;"></i></div>
+      <div>
+        <div class="stat-val">{{ team_data | selectattr('sheet') | selectattr('sheet.status.value', 'equalto', 'APPROVED') | list | length }}</div>
+        <div class="stat-label">Goals Approved</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon-box" style="background:#fce4ec;"><i class="bi bi-calendar3" style="color:#b71c1c;"></i></div>
+      <div><div class="stat-val">{{ active_quarter or '—' }}</div><div class="stat-label">Active Quarter</div></div>
+    </div>
+  </div>
+</div>
+
+{% if pending_count > 0 %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+  <i class="bi bi-clock-history fs-4"></i>
+  <div><strong>{{ pending_count }} goal sheet(s) awaiting your approval.</strong></div>
+  <a href="/manager/approvals" class="btn btn-warning btn-sm ms-auto">Review Now</a>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between py-3">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-people me-2" style="color:#1E3A5F;"></i>Team Overview{% if cycle %} — {{ cycle.name }}{% endif %}</h6>
+    <a href="/manager/checkins" class="btn btn-sm btn-outline-primary"><i class="bi bi-chat-square-text me-1"></i>Check-ins</a>
+  </div>
+  <div class="card-body p-0">
+    {% if not team_data %}
+    <div class="text-center py-5 text-muted"><i class="bi bi-people fs-1 d-block mb-3" style="color:#adb5bd;"></i>No team members assigned yet.</div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead><tr>
+          <th style="padding-left:1.2rem;">Employee</th>
+          <th>Department</th>
+          <th>Goals</th>
+          <th>Weightage</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody>
+          {% for item in team_data %}
+          <tr>
+            <td style="padding-left:1.2rem;">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:32px;height:32px;background:#1E3A5F;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:600;flex-shrink:0;">{{ item.user.name[0].upper() }}</div>
+                <div>
+                  <div class="fw-semibold" style="font-size:.875rem;">{{ item.user.name }}</div>
+                  <div style="font-size:.75rem;color:#6c757d;">{{ item.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td style="font-size:.875rem;">{{ item.user.department or '—' }}</td>
+            <td style="font-size:.875rem;">
+              {% if item.sheet %}{{ item.sheet.goals|length }}/8{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if item.sheet and item.sheet.goals %}
+                {% set tw = item.sheet.goals | sum(attribute='weightage') %}
+                <span class="fw-bold {% if tw == 100 %}text-success{% else %}text-warning{% endif %}">{{ tw }}%</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if not item.sheet %}
+                <span class="badge badge-status-draft">No Sheet</span>
+              {% elif item.sheet.status.value == 'DRAFT' %}
+                <span class="badge badge-status-draft">Draft</span>
+              {% elif item.sheet.status.value == 'SUBMITTED' %}
+                <span class="badge badge-status-submitted"><i class="bi bi-clock me-1"></i>Pending Review</span>
+              {% elif item.sheet.status.value == 'APPROVED' %}
+                <span class="badge badge-status-approved"><i class="bi bi-check-circle me-1"></i>Approved</span>
+              {% elif item.sheet.status.value == 'REWORK_REQUESTED' %}
+                <span class="badge badge-status-rework"><i class="bi bi-arrow-counterclockwise me-1"></i>Rework</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.sheet and item.sheet.status.value == 'SUBMITTED' %}
+                <a href="/manager/approvals" class="btn btn-sm btn-warning">Review</a>
+              {% elif item.sheet and item.sheet.status.value == 'APPROVED' and active_quarter %}
+                <a href="/manager/checkins" class="btn btn-sm btn-outline-primary">Check-in</a>
+              {% else %}
+                <span class="text-muted" style="font-size:.8rem;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

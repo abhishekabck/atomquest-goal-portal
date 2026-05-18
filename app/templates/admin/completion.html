@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Completion Dashboard{% endblock %}
+{% block page_title %}Completion Dashboard{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-person-check me-2" style="color:#1E3A5F;"></i>Employee Goal Submission Status{% if cycle %} — {{ cycle.name }}{% endif %}</h6>
+        <a href="/reports/completion-csv" class="btn btn-sm btn-outline-success"><i class="bi bi-download me-1"></i>Export CSV</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" style="font-size:.85rem;">
+            <thead><tr><th style="padding-left:1.2rem;">Employee</th><th>Dept</th><th>Manager</th><th>Status</th><th>Submitted</th><th>Approved</th></tr></thead>
+            <tbody>
+              {% for item in emp_status %}
+              <tr>
+                <td style="padding-left:1.2rem;" class="fw-semibold">{{ item.user.name }}</td>
+                <td style="color:#6c757d;">{{ item.user.department or '—' }}</td>
+                <td style="color:#6c757d;">{{ item.user.manager.name if item.user.manager else '—' }}</td>
+                <td>
+                  {% if not item.sheet %}
+                    <span class="badge" style="background:#e9ecef;color:#495057;">Not Started</span>
+                  {% elif item.sheet.status.value == 'DRAFT' %}
+                    <span class="badge badge-status-draft">Draft</span>
+                  {% elif item.sheet.status.value == 'SUBMITTED' %}
+                    <span class="badge badge-status-submitted">Pending</span>
+                  {% elif item.sheet.status.value == 'APPROVED' %}
+                    <span class="badge badge-status-approved"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% elif item.sheet.status.value == 'REWORK_REQUESTED' %}
+                    <span class="badge badge-status-rework">Rework</span>
+                  {% endif %}
+                </td>
+                <td style="color:#6c757d;">{% if item.sheet and item.sheet.submitted_at %}{{ item.sheet.submitted_at.strftime('%d %b') }}{% else %}—{% endif %}</td>
+                <td style="color:#6c757d;">{% if item.sheet and item.sheet.approved_at %}{{ item.sheet.approved_at.strftime('%d %b') }}{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-person-workspace me-2" style="color:#1E3A5F;"></i>Manager Approval Summary</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" style="font-size:.85rem;">
+            <thead><tr><th style="padding-left:1.2rem;">Manager</th><th>Team Size</th><th>Approved</th><th>Pending</th></tr></thead>
+            <tbody>
+              {% for item in mgr_status %}
+              <tr>
+                <td style="padding-left:1.2rem;" class="fw-semibold">{{ item.user.name }}</td>
+                <td>{{ item.team_size }}</td>
+                <td><span class="text-success fw-bold">{{ item.approved }}</span></td>
+                <td>
+                  {% if item.pending > 0 %}
+                    <span class="badge bg-warning text-dark">{{ item.pending }} pending</span>
+                  {% else %}
+                    <span class="text-success" style="font-size:.8rem;"><i class="bi bi-check2"></i> All done</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary donut -->
+    <div class="card mt-3">
+      <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart me-2"></i>Submission Overview</h6></div>
+      <div class="card-body d-flex justify-content-center">
+        <canvas id="completionChart" width="220" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const approved = {{ emp_status | selectattr('sheet') | selectattr('sheet.status.value','equalto','APPROVED') | list | length }};
+const submitted = {{ emp_status | selectattr('sheet') | selectattr('sheet.status.value','equalto','SUBMITTED') | list | length }};
+const rework = {{ emp_status | selectattr('sheet') | selectattr('sheet.status.value','equalto','REWORK_REQUESTED') | list | length }};
+const draft = {{ emp_status | selectattr('sheet') | selectattr('sheet.status.value','equalto','DRAFT') | list | length }};
+const notStarted = {{ emp_status | rejectattr('sheet') | list | length }};
+new Chart(document.getElementById('completionChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Approved','Pending','Rework','Draft','Not Started'],
+    datasets: [{ data: [approved, submitted, rework, draft, notStarted],
+      backgroundColor: ['#4CAF50','#2196F3','#FFC107','#9E9E9E','#f44336'],
+      borderWidth: 3, borderColor: '#fff' }]
+  },
+  options: { responsive: false, plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 } } } }, cutout: '60%' }
+});
+</script>
+{% endblock %}

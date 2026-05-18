@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Goal Cycles{% endblock %}
+{% block page_title %}Goal Cycles{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'added' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Cycle created.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+{% if params.get('success') == 'activated' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Cycle activated.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCycleModal">
+    <i class="bi bi-plus-circle me-2"></i>Create Cycle
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-calendar3 me-2" style="color:#1E3A5F;"></i>All Cycles</h6></div>
+  <div class="card-body p-0">
+    {% if not cycles %}
+    <div class="text-center py-5 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-3"></i>No cycles created yet.</div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead><tr><th style="padding-left:1.2rem;">Name</th><th>Year</th><th>Goal Setting</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for c in cycles %}
+          <tr>
+            <td style="padding-left:1.2rem;" class="fw-semibold">{{ c.name }}</td>
+            <td>{{ c.year }}</td>
+            <td style="font-size:.8rem;">{{ c.goal_setting_start }} → {{ c.goal_setting_end }}</td>
+            <td style="font-size:.8rem;">{% if c.q1_start %}{{ c.q1_start }} → {{ c.q1_end }}{% else %}—{% endif %}</td>
+            <td style="font-size:.8rem;">{% if c.q2_start %}{{ c.q2_start }} → {{ c.q2_end }}{% else %}—{% endif %}</td>
+            <td style="font-size:.8rem;">{% if c.q3_start %}{{ c.q3_start }} → {{ c.q3_end }}{% else %}—{% endif %}</td>
+            <td style="font-size:.8rem;">{% if c.q4_start %}{{ c.q4_start }} → {{ c.q4_end }}{% else %}—{% endif %}</td>
+            <td>
+              {% if c.is_active %}<span class="badge bg-success">Active</span>
+              {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+            </td>
+            <td>
+              {% if not c.is_active %}
+              <form method="POST" action="/admin/cycles/{{ c.id }}/activate" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Activate this cycle? The current active cycle will be deactivated.')">
+                  <i class="bi bi-play-fill"></i> Activate
+                </button>
+              </form>
+              {% else %}
+              <span class="text-success" style="font-size:.8rem;"><i class="bi bi-check2"></i> Active</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Add Cycle Modal -->
+<div class="modal fade" id="addCycleModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form method="POST" action="/admin/cycles/add">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white fw-bold"><i class="bi bi-calendar-plus me-2"></i>Create Goal Cycle</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6"><label class="form-label fw-semibold">Cycle Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" placeholder="e.g. FY 2025-26" required/></div>
+            <div class="col-md-6"><label class="form-label fw-semibold">Year <span class="text-danger">*</span></label><input type="number" name="year" class="form-control" value="2025" required/></div>
+          </div>
+          <div class="alert alert-info py-2 mb-3" style="font-size:.82rem;"><i class="bi bi-info-circle me-1"></i>Per the schedule: Goal Setting opens 1st May. Q1 = July, Q2 = October, Q3 = January, Q4 = March/April.</div>
+          <h6 class="fw-bold mb-3" style="color:#1E3A5F;">Window Dates</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="p-3 border rounded" style="background:#f8f9fa;">
+                <div class="fw-semibold mb-2" style="color:#1E3A5F;"><i class="bi bi-pencil-square me-1"></i>Goal Setting Phase</div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label" style="font-size:.8rem;">Start <span class="text-danger">*</span></label><input type="date" name="goal_setting_start" class="form-control form-control-sm" required/></div>
+                  <div class="col-6"><label class="form-label" style="font-size:.8rem;">End <span class="text-danger">*</span></label><input type="date" name="goal_setting_end" class="form-control form-control-sm" required/></div>
+                </div>
+              </div>
+            </div>
+            {% for q, hint in [('q1','July window'), ('q2','October window'), ('q3','January window'), ('q4','March/April — Annual')] %}
+            <div class="col-md-6">
+              <div class="p-3 border rounded" style="background:#f8f9fa;">
+                <div class="fw-semibold mb-2" style="color:#F57C00;"><i class="bi bi-check2 me-1"></i>{{ q.upper() }} Check-in <small class="text-muted fw-normal">({{ hint }})</small></div>
+                <div class="row g-2">
+                  <div class="col-6"><label class="form-label" style="font-size:.8rem;">Start</label><input type="date" name="{{ q }}_start" class="form-control form-control-sm"/></div>
+                  <div class="col-6"><label class="form-label" style="font-size:.8rem;">End</label><input type="date" name="{{ q }}_end" class="form-control form-control-sm"/></div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Create Cycle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

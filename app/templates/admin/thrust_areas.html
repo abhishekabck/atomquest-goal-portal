@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Thrust Areas{% endblock %}
+{% block page_title %}Thrust Areas{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'added' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Thrust area added.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAreaModal">
+    <i class="bi bi-plus-circle me-2"></i>Add Thrust Area
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-header py-3"><h6 class="mb-0 fw-bold"><i class="bi bi-layers me-2" style="color:#1E3A5F;"></i>All Thrust Areas ({{ areas|length }})</h6></div>
+  <div class="card-body p-0">
+    {% if not areas %}
+    <div class="text-center py-5 text-muted"><i class="bi bi-layers fs-1 d-block mb-3"></i>No thrust areas yet.</div>
+    {% else %}
+    <table class="table table-hover mb-0">
+      <thead><tr><th style="padding-left:1.2rem;">ID</th><th>Name</th><th>Department</th><th>Active</th></tr></thead>
+      <tbody>
+        {% for a in areas %}
+        <tr>
+          <td style="padding-left:1.2rem;color:#6c757d;">{{ a.id }}</td>
+          <td class="fw-semibold">{{ a.name }}</td>
+          <td style="color:#6c757d;">{{ a.department or '—' }}</td>
+          <td>{% if a.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal fade" id="addAreaModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/admin/thrust-areas/add">
+        <div class="modal-header" style="background:#1E3A5F;">
+          <h5 class="modal-title text-white fw-bold"><i class="bi bi-plus-circle me-2"></i>Add Thrust Area</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-semibold">Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" placeholder="e.g. Revenue Growth" required/></div>
+          <div class="mb-3"><label class="form-label fw-semibold">Department</label><input type="text" name="department" class="form-control" placeholder="e.g. Sales, Engineering…"/></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

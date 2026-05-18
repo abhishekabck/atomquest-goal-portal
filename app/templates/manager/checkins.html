@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Team Check-ins{% endblock %}
+{% block page_title %}Team Check-ins{% endblock %}
+{% block content %}
+{% set params = request.query_params %}
+{% if params.get('success') == 'commented' %}<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>Comment saved.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+
+{% if not active_quarter %}
+<div class="alert alert-info"><i class="bi bi-clock me-2"></i>No check-in window is currently open.</div>
+{% elif not team_checkins %}
+<div class="card"><div class="card-body text-center py-5 text-muted">
+  <i class="bi bi-people fs-1 d-block mb-3" style="color:#adb5bd;"></i>No approved team goals found for {{ active_quarter }}.
+</div></div>
+{% else %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <div style="background:#e8f0fe;border-radius:10px;padding:.6rem 1.2rem;">
+    <span style="font-size:.8rem;color:#6c757d;">Active Quarter</span>
+    <div style="font-size:1.4rem;font-weight:700;color:#1E3A5F;">{{ active_quarter }}</div>
+  </div>
+  <div style="background:#e8f5e9;border-radius:10px;padding:.6rem 1.2rem;">
+    <span style="font-size:.8rem;color:#6c757d;">Team Members</span>
+    <div style="font-size:1.4rem;font-weight:700;color:#2e7d32;">{{ team_checkins|length }}</div>
+  </div>
+</div>
+
+{% for item in team_checkins %}
+<div class="card mb-4">
+  <div class="card-header py-3" style="background:#f8f9fa;">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:36px;height:36px;background:#1E3A5F;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem;">{{ item.member.name[0].upper() }}</div>
+      <div>
+        <div class="fw-bold">{{ item.member.name }}</div>
+        <div style="font-size:.78rem;color:#6c757d;">{{ item.member.department or '' }} · {{ item.goals_ci|length }} goals</div>
+      </div>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% for goal, ci in item.goals_ci %}
+    <div class="border-bottom px-4 py-3">
+      <div class="row align-items-start g-3">
+        <div class="col-md-4">
+          <div class="fw-semibold" style="font-size:.875rem;color:#1E3A5F;">{{ goal.title }}</div>
+          <div style="font-size:.75rem;color:#6c757d;">{{ goal.thrust_area.name }} · {{ goal.uom_type.value.replace('_',' ') }} · {{ goal.weightage }}%</div>
+          <div style="font-size:.8rem;margin-top:.3rem;">
+            <span class="text-muted">Target:</span>
+            <strong>{% if goal.uom_type.value == 'TIMELINE' %}{{ goal.target_date }}{% elif goal.uom_type.value == 'ZERO_BASED' %}0{% else %}{{ goal.target_value }}{% endif %}</strong>
+          </div>
+        </div>
+        <div class="col-md-3">
+          {% if ci %}
+            <div style="font-size:.8rem;color:#6c757d;">Actual</div>
+            <div class="fw-bold" style="font-size:1rem;color:#1E3A5F;">
+              {% if ci.actual_value is not none %}{{ ci.actual_value }}
+              {% elif ci.actual_date %}{{ ci.actual_date }}
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </div>
+            <span class="badge mt-1
+              {% if ci.status.value == 'COMPLETED' %}bg-success
+              {% elif ci.status.value == 'ON_TRACK' %}bg-primary
+              {% else %}bg-secondary{% endif %}" style="font-size:.7rem;">
+              {{ ci.status.value.replace('_',' ') }}
+            </span>
+            {% if ci.progress_score is not none %}
+            <div class="mt-2">
+              <div class="progress progress-sm" style="width:100px;">
+                <div class="progress-bar {% if ci.progress_score >= 80 %}bg-success{% elif ci.progress_score >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width:{{ [ci.progress_score,100]|min }}%;"></div>
+              </div>
+              <small style="color:#6c757d;font-size:.72rem;">Score: {{ ci.progress_score|round(1) }}%</small>
+            </div>
+            {% endif %}
+            {% if ci.employee_notes %}
+            <div style="font-size:.75rem;color:#6c757d;margin-top:.3rem;font-style:italic;">"{{ ci.employee_notes }}"</div>
+            {% endif %}
+          {% else %}
+            <span class="text-muted" style="font-size:.85rem;">Not updated yet</span>
+          {% endif %}
+        </div>
+        <div class="col-md-5">
+          <form method="POST" action="/manager/checkins/{% if ci %}{{ ci.id }}{% else %}0{% endif %}/comment">
+            {% if not ci %}
+              <div class="text-muted" style="font-size:.8rem;"><i class="bi bi-info-circle me-1"></i>Employee hasn't submitted data yet.</div>
+            {% else %}
+              <label class="form-label fw-semibold" style="font-size:.8rem;">Manager Comment</label>
+              <div class="input-group input-group-sm">
+                <textarea name="manager_comment" class="form-control" rows="2"
+                  placeholder="Add structured check-in comment…" style="font-size:.82rem;">{{ ci.manager_comment or '' }}</textarea>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i></button>
+              </div>
+              {% if ci.manager_checked_at %}
+              <div style="font-size:.72rem;color:#6c757d;margin-top:.3rem;">Last updated: {{ ci.manager_checked_at.strftime('%d %b %Y') }}</div>
+              {% endif %}
+            {% endif %}
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

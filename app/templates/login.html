@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | AtomQuest Goal Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    :root { --primary: #1E3A5F; --accent: #F57C00; }
+    body { min-height: 100vh; background: linear-gradient(135deg, #1E3A5F 0%, #2a4f80 50%, #1a2f4e 100%); display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .login-card { background: #fff; border-radius: 18px; padding: 2.5rem 2rem; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+    .brand-logo { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 1.4rem; margin: 0 auto 1rem; }
+    .brand-title { font-size: 1.5rem; font-weight: 700; color: var(--primary); text-align: center; }
+    .brand-sub { color: #6c757d; font-size: .85rem; text-align: center; margin-bottom: 1.75rem; }
+    .form-label { font-size: .85rem; font-weight: 600; color: #374151; }
+    .form-control { border-radius: 8px; border: 1.5px solid #d1d5db; padding: .6rem .9rem; font-size: .9rem; }
+    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 .2rem rgba(30,58,95,.15); }
+    .btn-login { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: .7rem; font-size: .95rem; font-weight: 600; width: 100%; transition: background .2s; }
+    .btn-login:hover { background: #2a4f80; }
+    .demo-creds { background: #f8f9fa; border-radius: 10px; padding: .9rem 1rem; margin-top: 1.25rem; font-size: .8rem; }
+    .demo-creds .label { font-weight: 600; color: var(--primary); font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; }
+    .demo-row { display: flex; justify-content: space-between; align-items: center; padding: .25rem 0; }
+    .cred-btn { background: none; border: 1px solid #d1d5db; border-radius: 5px; padding: .15rem .5rem; font-size: .75rem; cursor: pointer; color: var(--primary); transition: all .15s; }
+    .cred-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand-logo">A</div>
+    <div class="brand-title">GoalTracker</div>
+    <div class="brand-sub">AtomQuest Goal Setting & Tracking Portal</div>
+
+    {% if error %}
+    <div class="alert alert-danger py-2 mb-3" style="font-size:.85rem;border-radius:8px;">
+      <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <div class="mb-3">
+        <label class="form-label">Email Address</label>
+        <div class="input-group">
+          <span class="input-group-text" style="border-radius:8px 0 0 8px;background:#f8f9fa;border:1.5px solid #d1d5db;border-right:none;"><i class="bi bi-envelope" style="color:#6c757d;"></i></span>
+          <input type="email" name="email" id="emailInput" class="form-control" style="border-radius:0 8px 8px 0;border-left:none;" placeholder="you@atomberg.com" required/>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Password</label>
+        <div class="input-group">
+          <span class="input-group-text" style="border-radius:8px 0 0 8px;background:#f8f9fa;border:1.5px solid #d1d5db;border-right:none;"><i class="bi bi-lock" style="color:#6c757d;"></i></span>
+          <input type="password" name="password" id="passInput" class="form-control" style="border-radius:0 8px 8px 0;border-left:none;" placeholder="••••••••" required/>
+        </div>
+      </div>
+      <button type="submit" class="btn-login">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+      </button>
+    </form>
+
+    <div class="demo-creds">
+      <div class="label mb-2">Demo Credentials</div>
+      <div class="demo-row">
+        <span><i class="bi bi-person-fill-gear me-1" style="color:#6c757d;"></i> <strong>Admin / HR</strong></span>
+        <button class="cred-btn" onclick="fillCreds('admin@atomberg.com','admin123')">Use</button>
+      </div>
+      <div style="font-size:.72rem;color:#6c757d;padding-left:1.2rem;margin-top:-2px;margin-bottom:4px;">admin@atomberg.com / admin123</div>
+      <div class="demo-row">
+        <span><i class="bi bi-person-workspace me-1" style="color:#6c757d;"></i> <strong>Manager (L1)</strong></span>
+        <button class="cred-btn" onclick="fillCreds('manager@atomberg.com','manager123')">Use</button>
+      </div>
+      <div style="font-size:.72rem;color:#6c757d;padding-left:1.2rem;margin-top:-2px;margin-bottom:4px;">manager@atomberg.com / manager123</div>
+      <div class="demo-row">
+        <span><i class="bi bi-person me-1" style="color:#6c757d;"></i> <strong>Employee</strong></span>
+        <button class="cred-btn" onclick="fillCreds('alice@atomberg.com','emp123')">Use</button>
+      </div>
+      <div style="font-size:.72rem;color:#6c757d;padding-left:1.2rem;margin-top:-2px;">alice@atomberg.com / emp123</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function fillCreds(email, pass) {
+      document.getElementById('emailInput').value = email;
+      document.getElementById('passInput').value = pass;
+    }
+  </script>
+</body>
+</html>

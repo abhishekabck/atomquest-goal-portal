@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  .chart-card { background:#fff; border-radius:12px; border:1px solid #e9edf2; box-shadow:0 1px 4px rgba(0,0,0,.05); padding:1.25rem; }
+  .chart-title { font-size:.875rem; font-weight:700; color:#1E3A5F; margin-bottom:1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <label class="fw-semibold mb-0" style="font-size:.875rem;">Cycle:</label>
+  <select id="cycleSelector" class="form-select form-select-sm" style="width:auto;" onchange="loadAllCharts()">
+    {% for c in cycles %}
+    <option value="{{ c.id }}" {% if c.is_active %}selected{% endif %}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-sm btn-outline-primary" onclick="loadAllCharts()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+</div>
+
+<div class="row g-4">
+  <!-- QoQ Trends -->
+  <div class="col-lg-8">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-graph-up-arrow me-2" style="color:#F57C00;"></i>Quarter-on-Quarter Progress Trends</div>
+      <canvas id="qoqChart" height="90"></canvas>
+    </div>
+  </div>
+
+  <!-- Goal Distribution by Thrust Area -->
+  <div class="col-lg-4">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-pie-chart me-2" style="color:#1E3A5F;"></i>Goals by Thrust Area</div>
+      <canvas id="thrustChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- UoM Distribution -->
+  <div class="col-lg-4">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-rulers me-2" style="color:#2196F3;"></i>UoM Type Distribution</div>
+      <canvas id="uomChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Manager Effectiveness -->
+  <div class="col-lg-8">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-people me-2" style="color:#4CAF50;"></i>Manager Effectiveness — Approval & Check-in Rates</div>
+      <canvas id="mgrChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Completion Heatmap -->
+  <div class="col-12">
+    <div class="chart-card">
+      <div class="chart-title"><i class="bi bi-grid-3x3 me-2" style="color:#9C27B0;"></i>Check-in Completion Heatmap — by Department & Quarter</div>
+      <div id="heatmapContainer" style="overflow-x:auto;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let charts = {};
+
+function getCycleId() {
+  return document.getElementById('cycleSelector').value;
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+async function loadQoQ() {
+  destroyChart('qoq');
+  const res = await fetch('/analytics/qoq-trends?cycle_id=' + getCycleId());
+  const data = await res.json();
+  charts['qoq'] = new Chart(document.getElementById('qoqChart'), {
+    type: 'line',
+    data: data,
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + '%' } } },
+      scales: {
+        y: { beginAtZero: true, max: 120, ticks: { callback: v => v + '%' }, grid: { color: '#f0f0f0' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+async function loadThrust() {
+  destroyChart('thrust');
+  const res = await fetch('/analytics/goal-distribution?cycle_id=' + getCycleId());
+  const data = await res.json();
+  charts['thrust'] = new Chart(document.getElementById('thrustChart'), {
+    type: 'doughnut', data: data,
+    options: { responsive: false, plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 11 } } } }, cutout: '55%' }
+  });
+}
+
+async function loadUoM() {
+  destroyChart('uom');
+  const res = await fetch('/analytics/uom-distribution?cycle_id=' + getCycleId());
+  const data = await res.json();
+  charts['uom'] = new Chart(document.getElementById('uomChart'), {
+    type: 'bar', data: data,
+    options: {
+      responsive: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, grid: { color: '#f0f0f0' } }, y: { grid: { display: false } } }
+    }
+  });
+}
+
+async function loadManager() {
+  destroyChart('mgr');
+  const res = await fetch('/analytics/manager-effectiveness?cycle_id=' + getCycleId());
+  const data = await res.json();
+  charts['mgr'] = new Chart(document.getElementById('mgrChart'), {
+    type: 'bar', data: data,
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + '%' } } },
+      scales: {
+        y: { beginAtZero: true, max: 110, ticks: { callback: v => v + '%' }, grid: { color: '#f0f0f0' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+async function loadHeatmap() {
+  const res = await fetch('/analytics/completion-heatmap?cycle_id=' + getCycleId());
+  const data = await res.json();
+  const container = document.getElementById('heatmapContainer');
+
+  if (!data.departments || data.departments.length === 0) {
+    container.innerHTML = '<div class="text-center text-muted py-3">No data available.</div>';
+    return;
+  }
+
+  function getColor(val) {
+    if (val === 0) return '#f8f9fa';
+    if (val < 25) return '#ffcdd2';
+    if (val < 50) return '#ffe0b2';
+    if (val < 75) return '#fff9c4';
+    if (val < 90) return '#c8e6c9';
+    return '#a5d6a7';
+  }
+
+  let html = '<table class="table table-bordered mb-0" style="font-size:.82rem;min-width:400px;">';
+  html += '<thead><tr><th style="background:#1E3A5F;color:#fff;padding:.6rem 1rem;">Department</th>';
+  data.quarters.forEach(q => { html += `<th style="background:#1E3A5F;color:#fff;text-align:center;padding:.6rem 1rem;">${q}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  data.data.forEach(row => {
+    html += `<tr><td class="fw-semibold" style="padding:.5rem 1rem;">${row.department}</td>`;
+    data.quarters.forEach(q => {
+      const val = row.quarters[q] || 0;
+      html += `<td style="text-align:center;background:${getColor(val)};font-weight:600;padding:.5rem;">${val}%</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  // Legend
+  html += '<div class="d-flex gap-3 mt-2" style="font-size:.75rem;flex-wrap:wrap;">';
+  [['#ffcdd2','< 25%'],['#ffe0b2','25–50%'],['#fff9c4','50–75%'],['#c8e6c9','75–90%'],['#a5d6a7','≥ 90%']].forEach(([bg,label]) => {
+    html += `<span><span style="display:inline-block;width:14px;height:14px;background:${bg};border:1px solid #ccc;border-radius:3px;margin-right:4px;vertical-align:middle;"></span>${label}</span>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function loadAllCharts() {
+  await Promise.all([loadQoQ(), loadThrust(), loadUoM(), loadManager(), loadHeatmap()]);
+}
+
+document.addEventListener('DOMContentLoaded', loadAllCharts);
+</script>
+{% endblock %}

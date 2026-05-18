@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Database (don't commit the DB — judges run seed_data.py themselves)
+data/app.db
+data/*.db-shm
+data/*.db-wal
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# IDE / OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Claude project memory (internal tool files)
+.claude/
+
+# Logs
+*.log
