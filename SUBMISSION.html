@@ -28,8 +28,31 @@
   .link-label { font-size: .72rem; color: #888; text-transform: uppercase; letter-spacing: .5px; }
   .link-url { font-size: .9rem; color: #1E3A5F; font-weight: 600; word-break: break-all; }
 
-  /* Architecture */
-  .arch { background: #f9fafb; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: .72rem; line-height: 1.65; color: #1a2f4e; }
+  /* Architecture diagram */
+  .arch-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .arch-layer { width: 100%; border-radius: 10px; padding: 12px 16px; position: relative; }
+  .arch-layer.browser  { background: #e8f0fe; border: 2px solid #4a90d9; }
+  .arch-layer.fastapi  { background: #fff8e1; border: 2px solid #F57C00; }
+  .arch-layer.db       { background: #e8f5e9; border: 2px solid #2e7d32; }
+  .arch-title { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .arch-title.blue   { color: #1a3a8f; }
+  .arch-title.orange { color: #c45c00; }
+  .arch-title.green  { color: #1b5e20; }
+  .arch-sub { font-size: .72rem; color: #555; margin-bottom: 6px; }
+  .arch-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .arch-pill { font-size: .68rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .arch-pill.blue   { background: #c8d8ff; color: #1a3a8f; }
+  .arch-pill.orange { background: #ffe0b2; color: #c45c00; }
+  .arch-pill.green  { background: #c8e6c9; color: #1b5e20; }
+  .arch-arrow { text-align: center; font-size: 1.2rem; color: #999; line-height: 1; padding: 3px 0; }
+  .arch-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .arch-box { background: rgba(255,255,255,0.6); border-radius: 7px; padding: 7px 10px; }
+  .arch-box-title { font-size: .68rem; font-weight: 700; color: #c45c00; margin-bottom: 3px; }
+  .arch-box-items { font-size: .65rem; color: #555; line-height: 1.5; }
+  .arch-box-items.green-t { color: #1b5e20; }
+  .arch-index { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
+  .arch-index-item { background: rgba(255,255,255,0.6); border-radius: 6px; padding: 5px 9px; font-size: .65rem; color: #1b5e20; }
+  .arch-index-item strong { display: block; font-size: .62rem; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 1px; }
 
   /* Credentials */
   .cred-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
@@ -104,50 +127,81 @@
   <!-- ARCHITECTURE DIAGRAM -->
   <div class="section">
     <div class="section-title">Architecture Diagram</div>
-    <div class="arch">
-┌─────────────────────────────────────────────────────────────────────────┐
-│                  BROWSER  (Bootstrap 5 · Chart.js · vanilla JS)         │
-│         Server-Side Rendered HTML — no build step required              │
-└───────────────────────────────┬─────────────────────────────────────────┘
-                                │  HTTPS · Cookie-based JWT (httpOnly)
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                        FastAPI  (ASGI / Uvicorn)                        │
-│                                                                         │
-│  Middleware stack                                                        │
-│  ├── GZipMiddleware  (compress responses > 500 B, saves ~65% bandwidth) │
-│  ├── Request Timing  (X-Process-Time-Ms header for monitoring)          │
-│  └── Global 404 / 500 error handlers                                    │
-│                                                                         │
-│  Routers                                                                │
-│  ├── /auth       Login · Logout (JWT cookie issue / revoke)             │
-│  ├── /employee   Goal CRUD · Submit · Quarterly check-ins               │
-│  ├── /manager    Approve · Rework · Inline edit · Shared goals          │
-│  ├── /admin      Users · Cycles · Audit log · Escalation rules          │
-│  ├── /reports    Excel achievement report · CSV completion export        │
-│  └── /analytics  5× Chart.js JSON endpoints · Analytics dashboard       │
-│                                                                         │
-│  Services                                                               │
-│  ├── progress.py     Progress score formulas (6 UoM types)              │
-│  └── escalation.py   Daily rule engine (APScheduler, daemon=True)       │
-│                                                                         │
-│  Auth: python-jose JWT · passlib/bcrypt · role-based dependency guards  │
-└───────────────────────────────┬─────────────────────────────────────────┘
-                                │  SQLAlchemy ORM  (pool_size=20 + 40 burst)
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                       SQLite  —  WAL Mode                               │
-│                                                                         │
-│  PRAGMA journal_mode = WAL        → concurrent readers never block      │
-│  PRAGMA synchronous   = NORMAL    → safe + fast writes                  │
-│  PRAGMA cache_size    = -64000    → 64 MB page cache in RAM             │
-│  PRAGMA mmap_size     = 268435456 → 256 MB memory-mapped I/O            │
-│  PRAGMA foreign_keys  = ON        → referential integrity enforced      │
-│                                                                         │
-│  Composite indexes on hot paths:                                        │
-│  • (employee_id, cycle_id) UNIQUE on goal_sheets                        │
-│  • (goal_id, quarter) UNIQUE on check_ins                               │
-│  • (user_id, is_read) on notifications                                  │
-│  • (cycle_id, status) on goal_sheets                                    │
-└─────────────────────────────────────────────────────────────────────────┘
+    <div class="arch-wrap">
+
+      <!-- Layer 1: Browser -->
+      <div class="arch-layer browser">
+        <div class="arch-title blue">&#127760; Browser — Client Layer</div>
+        <div class="arch-sub">Server-Side Rendered HTML · No build step required</div>
+        <div class="arch-pills">
+          <span class="arch-pill blue">Bootstrap 5.3</span>
+          <span class="arch-pill blue">Chart.js 4</span>
+          <span class="arch-pill blue">Bootstrap Icons</span>
+          <span class="arch-pill blue">Cookie-based JWT (httpOnly)</span>
+          <span class="arch-pill blue">HTTPS</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow">&#8595;</div>
+
+      <!-- Layer 2: FastAPI -->
+      <div class="arch-layer fastapi">
+        <div class="arch-title orange">&#9889; FastAPI Application — ASGI / Uvicorn</div>
+        <div class="arch-sub">Middleware: GZipMiddleware (saves ~65% bandwidth) · Request Timing header · Global 404/500 handlers</div>
+        <div class="arch-row">
+          <div class="arch-box">
+            <div class="arch-box-title">Routers (48 routes)</div>
+            <div class="arch-box-items">
+              /auth &nbsp;— Login · Logout<br>
+              /employee — Goals · Check-ins<br>
+              /manager &nbsp;— Approvals · Comments<br>
+              /admin &nbsp;&nbsp;&nbsp;— Users · Cycles · Audit<br>
+              /reports &nbsp;— Excel · CSV export<br>
+              /analytics — 5 Chart.js endpoints
+            </div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">Services</div>
+            <div class="arch-box-items">
+              progress.py<br>
+              — Score formulas (6 UoM types)<br><br>
+              escalation.py<br>
+              — Daily rule engine<br>
+              — APScheduler (daemon)
+            </div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">Auth &amp; Security</div>
+            <div class="arch-box-items">
+              python-jose (JWT)<br>
+              passlib / bcrypt<br>
+              Role-based guards<br>
+              — EMPLOYEE<br>
+              — MANAGER<br>
+              — ADMIN
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">&#8595; &nbsp;<span style="font-size:.7rem;color:#aaa;">SQLAlchemy ORM · pool_size=20 · max_overflow=40 · joinedload (N+1 free)</span></div>
+
+      <!-- Layer 3: Database -->
+      <div class="arch-layer db">
+        <div class="arch-title green">&#128451; SQLite — WAL Mode</div>
+        <div class="arch-sub">Multiple concurrent readers · never block each other · 64 MB page cache · 256 MB memory-mapped I/O</div>
+        <div class="arch-index">
+          <div class="arch-index-item"><strong>journal_mode</strong>WAL — concurrent reads during writes</div>
+          <div class="arch-index-item"><strong>synchronous</strong>NORMAL — safe &amp; fast</div>
+          <div class="arch-index-item"><strong>cache_size</strong>64 MB page cache in RAM</div>
+          <div class="arch-index-item"><strong>mmap_size</strong>256 MB memory-mapped I/O</div>
+          <div class="arch-index-item"><strong>Index: goal_sheets</strong>(employee_id, cycle_id) UNIQUE</div>
+          <div class="arch-index-item"><strong>Index: check_ins</strong>(goal_id, quarter) UNIQUE</div>
+          <div class="arch-index-item"><strong>Index: notifications</strong>(user_id, is_read)</div>
+          <div class="arch-index-item"><strong>foreign_keys</strong>ON — referential integrity</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
