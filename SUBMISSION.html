@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>AtomQuest Hackathon 1.0 — Submission</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1a1a1a; font-size: 13px; }
+  .page { max-width: 900px; margin: 0 auto; padding: 36px 44px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; gap: 18px; border-bottom: 3px solid #1E3A5F; padding-bottom: 18px; margin-bottom: 28px; }
+  .logo { width: 52px; height: 52px; background: #F57C00; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .header h1 { font-size: 1.55rem; color: #1E3A5F; font-weight: 800; line-height: 1.2; }
+  .header p { color: #555; font-size: .85rem; margin-top: 3px; }
+  .badge { display: inline-block; background: #F57C00; color: #fff; font-size: .7rem; font-weight: 700; padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .5px; margin-top: 5px; }
+
+  /* Section */
+  .section { margin-bottom: 26px; }
+  .section-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #F57C00; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: #e5e5e5; }
+
+  /* Link boxes */
+  .link-box { background: #f5f8ff; border: 1.5px solid #c5d5f0; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .link-icon { width: 34px; height: 34px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .link-icon.green { background: #e8f5e9; }
+  .link-icon.blue  { background: #e3f0ff; }
+  .link-label { font-size: .72rem; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+  .link-url { font-size: .9rem; color: #1E3A5F; font-weight: 600; word-break: break-all; }
+
+  /* Architecture */
+  .arch { background: #f9fafb; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: .72rem; line-height: 1.65; color: #1a2f4e; }
+
+  /* Credentials */
+  .cred-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .cred-table th { background: #1E3A5F; color: #fff; padding: 7px 12px; text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; }
+  .cred-table td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+  .cred-table tr:nth-child(even) td { background: #f7f9fc; }
+  .role-badge { display: inline-block; font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; }
+  .role-badge.admin { background: #fde8d0; color: #b34a00; }
+  .role-badge.manager { background: #dce8ff; color: #1a3a7a; }
+  .role-badge.employee { background: #d6f5e3; color: #1a6636; }
+
+  /* Feature grid */
+  .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .feat-item { background: #f9fafb; border: 1px solid #e5e5e5; border-radius: 7px; padding: 8px 12px; display: flex; gap: 8px; align-items: flex-start; }
+  .feat-dot { width: 8px; height: 8px; background: #F57C00; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .feat-text { font-size: .8rem; color: #333; line-height: 1.4; }
+  .feat-text strong { color: #1E3A5F; }
+
+  /* Stack pills */
+  .stack { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { background: #EDF2FF; color: #1E3A5F; border-radius: 20px; padding: 4px 12px; font-size: .75rem; font-weight: 600; border: 1px solid #c5d0f0; }
+
+  /* Perf table */
+  .perf-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  .perf-table th { background: #1E3A5F; color: #fff; padding: 6px 12px; text-align: left; font-size: .7rem; }
+  .perf-table td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+  .perf-table td:first-child { color: #F57C00; font-weight: 600; }
+
+  /* Footer */
+  .footer { border-top: 1px solid #eee; margin-top: 30px; padding-top: 14px; text-align: center; color: #aaa; font-size: .72rem; }
+
+  @media print {
+    .page { padding: 20px 28px; }
+    body { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">A</div>
+    <div>
+      <h1>AtomQuest Goal Tracking Portal</h1>
+      <p>In-House Goal Setting &amp; Quarterly Tracking — Atomberg Technologies</p>
+      <span class="badge">AtomQuest Hackathon 1.0</span>
+    </div>
+  </div>
+
+  <!-- LINKS -->
+  <div class="section">
+    <div class="section-title">Links</div>
+
+    <div class="link-box">
+      <div class="link-icon green">🌐</div>
+      <div>
+        <div class="link-label">Working Demo Link</div>
+        <div class="link-url" id="demo-url">https://atomquest-goal-portal.up.railway.app</div>
+      </div>
+    </div>
+
+    <div class="link-box">
+      <div class="link-icon blue">💻</div>
+      <div>
+        <div class="link-label">Source Code Repository</div>
+        <div class="link-url">https://github.com/abhishekabck/atomquest-goal-portal</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHITECTURE DIAGRAM -->
+  <div class="section">
+    <div class="section-title">Architecture Diagram</div>
+    <div class="arch">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  BROWSER  (Bootstrap 5 · Chart.js · vanilla JS)         │
+│         Server-Side Rendered HTML — no build step required              │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │  HTTPS · Cookie-based JWT (httpOnly)
+┌───────────────────────────────▼─────────────────────────────────────────┐
+│                        FastAPI  (ASGI / Uvicorn)                        │
+│                                                                         │
+│  Middleware stack                                                        │
+│  ├── GZipMiddleware  (compress responses > 500 B, saves ~65% bandwidth) │
+│  ├── Request Timing  (X-Process-Time-Ms header for monitoring)          │
+│  └── Global 404 / 500 error handlers                                    │
+│                                                                         │
+│  Routers                                                                │
+│  ├── /auth       Login · Logout (JWT cookie issue / revoke)             │
+│  ├── /employee   Goal CRUD · Submit · Quarterly check-ins               │
+│  ├── /manager    Approve · Rework · Inline edit · Shared goals          │
+│  ├── /admin      Users · Cycles · Audit log · Escalation rules          │
+│  ├── /reports    Excel achievement report · CSV completion export        │
+│  └── /analytics  5× Chart.js JSON endpoints · Analytics dashboard       │
+│                                                                         │
+│  Services                                                               │
+│  ├── progress.py     Progress score formulas (6 UoM types)              │
+│  └── escalation.py   Daily rule engine (APScheduler, daemon=True)       │
+│                                                                         │
+│  Auth: python-jose JWT · passlib/bcrypt · role-based dependency guards  │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │  SQLAlchemy ORM  (pool_size=20 + 40 burst)
+┌───────────────────────────────▼─────────────────────────────────────────┐
+│                       SQLite  —  WAL Mode                               │
+│                                                                         │
+│  PRAGMA journal_mode = WAL        → concurrent readers never block      │
+│  PRAGMA synchronous   = NORMAL    → safe + fast writes                  │
+│  PRAGMA cache_size    = -64000    → 64 MB page cache in RAM             │
+│  PRAGMA mmap_size     = 268435456 → 256 MB memory-mapped I/O            │
+│  PRAGMA foreign_keys  = ON        → referential integrity enforced      │
+│                                                                         │
+│  Composite indexes on hot paths:                                        │
+│  • (employee_id, cycle_id) UNIQUE on goal_sheets                        │
+│  • (goal_id, quarter) UNIQUE on check_ins                               │
+│  • (user_id, is_read) on notifications                                  │
+│  • (cycle_id, status) on goal_sheets                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+    </div>
+  </div>
+
+  <!-- DEMO CREDENTIALS -->
+  <div class="section">
+    <div class="section-title">Demo Credentials</div>
+    <table class="cred-table">
+      <tr><th>Role</th><th>Email</th><th>Password</th><th>Demo State</th></tr>
+      <tr><td><span class="role-badge admin">Admin</span></td><td>admin@atomberg.com</td><td>admin123</td><td>Full access — analytics, reports, audit log</td></tr>
+      <tr><td><span class="role-badge manager">Manager</span></td><td>manager@atomberg.com</td><td>manager123</td><td>Has pending approval (Bob's sheet)</td></tr>
+      <tr><td><span class="role-badge manager">Manager</span></td><td>priya.mgr@atomberg.com</td><td>manager123</td><td>Rework requested on Carol's sheet</td></tr>
+      <tr><td><span class="role-badge employee">Employee</span></td><td>alice@atomberg.com</td><td>emp123</td><td>Approved sheet · Q1 + Q2 check-ins complete</td></tr>
+      <tr><td><span class="role-badge employee">Employee</span></td><td>bob@atomberg.com</td><td>emp123</td><td>Sheet submitted, awaiting approval</td></tr>
+      <tr><td><span class="role-badge employee">Employee</span></td><td>carol@atomberg.com</td><td>emp123</td><td>Sheet returned for rework</td></tr>
+    </table>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section">
+    <div class="section-title">Feature Coverage</div>
+    <div class="feat-grid">
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Goal Setting</strong> — Thrust Area, 6 UoM types, weightage validation (total=100%, min 10%, max 8 goals)</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Approval Workflow</strong> — Submit → Approve / Return for Rework → Goals locked on approval</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Quarterly Check-ins</strong> — Q1–Q4 per goal, auto progress score per UoM, manager comments</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Shared Goals</strong> — Manager pushes one goal to multiple employees, check-ins sync automatically</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Reports</strong> — Excel achievement report (styled, alternating rows) + CSV completion export</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Analytics Dashboard</strong> — QoQ trend, thrust area donut, UoM bar, completion heatmap, manager effectiveness</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Escalation Engine</strong> — Configurable rules (goal not submitted, not approved, check-in missed), daily job</div></div>
+      <div class="feat-item"><div class="feat-dot"></div><div class="feat-text"><strong>Audit Trail</strong> — Every state change logged with user, timestamp, old/new value</div></div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div class="section">
+    <div class="section-title">Performance &amp; Scale Design</div>
+    <table class="perf-table">
+      <tr><th>Concern</th><th>Solution</th></tr>
+      <tr><td>1,000+ concurrent users</td><td>SQLite WAL — multiple readers never block each other; pool_size=20 + max_overflow=40</td></tr>
+      <tr><td>N+1 query elimination</td><td>lazy="joined" on hot ORM relations + explicit joinedload() chains in all dashboard routes</td></tr>
+      <tr><td>Response payload size</td><td>GZipMiddleware cuts HTML/JSON by ~65% on all responses above 500 bytes</td></tr>
+      <tr><td>DB cold-start latency</td><td>64 MB page cache + 256 MB mmap keeps hot pages in RAM between requests</td></tr>
+      <tr><td>Connection stability</td><td>pool_pre_ping=True + pool_recycle=1800 prevents stale connection errors</td></tr>
+    </table>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="section">
+    <div class="section-title">Tech Stack</div>
+    <div class="stack">
+      <span class="pill">FastAPI 0.115+</span>
+      <span class="pill">SQLAlchemy 2.x</span>
+      <span class="pill">SQLite WAL</span>
+      <span class="pill">Jinja2 SSR</span>
+      <span class="pill">Bootstrap 5.3</span>
+      <span class="pill">Chart.js 4</span>
+      <span class="pill">python-jose (JWT)</span>
+      <span class="pill">passlib/bcrypt</span>
+      <span class="pill">openpyxl 3.1</span>
+      <span class="pill">APScheduler 3.10</span>
+      <span class="pill">Uvicorn (ASGI)</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    AtomQuest Hackathon 1.0 &nbsp;·&nbsp; Atomberg Technologies &nbsp;·&nbsp; Submitted by Abhishek Chaurasiya
+  </div>
+
+</div>
+</body>
+</html>
